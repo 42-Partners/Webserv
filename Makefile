@@ -1,7 +1,7 @@
 NAME		:= build/webserv
 
 CPP			:= c++
-CPPFLAGS 	:= -Wall -Wextra -Werror -std=c++98
+CPPFLAGS 	:= -Wall -Wextra -Werror -std=c++98 -MMD -MP
 
 # Directories
 CPP_DIR		:= src
@@ -20,12 +20,14 @@ SRC			:=
 
 OBJ			:= $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 
+DEPS 		:= $(OBJ:.o=.d)
+
 $(NAME): $(OBJ)
 	@echo "$(YELLOW)🔧 Linking objects...$(RESET)"
 	@$(CPP) $(CPPFLAGS) $(OBJ) -o $(NAME)
 	@echo "$(GREEN)✅ $(NAME) built successfully$(RESET)"
 
-$(OBJ_DIR)/%.o: %.cpp $(HPP_DIR)
+$(OBJ_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
 	@echo "$(BLUE)Compiling $<$(RESET)"
 	@$(CPP) $(CPPFLAGS) -I$(HPP_DIR) -c $< -o $@
@@ -44,3 +46,5 @@ fclean: clean
 re: fclean all
 
 .PHONY: all clean fclean re
+
+-include $(DEPS)
