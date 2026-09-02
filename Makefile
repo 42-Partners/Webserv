@@ -16,7 +16,8 @@ BLUE		:= \033[0;34m
 RESET		:= \033[0m
 
 # Files
-SRC			:=	
+SRC			:=	src/main.cpp \
+				src/parser/arg_parser.cpp
 
 OBJ			:= $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 
