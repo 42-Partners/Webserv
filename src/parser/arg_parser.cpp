@@ -2,22 +2,25 @@
 #include <stdexcept>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <string>
 
 static void file_handling( const char *file );
+void tokenizer(const std::string file);
 
 void arg_parser( int ac, char** av ) {
+	std::string file = "config/default.conf";
 	switch ( ac ) {
 		case 1:
-			file_handling( "config/default.conf" );
-			std::cout << "config carregado com sucesso"<< std::endl;
 			break;
 		case 2:
-			file_handling( av[1] );
-			std::cout << "config carregado com sucesso"<< std::endl;
+			file = av[1];
 			break;
 		default:
 			throw std::runtime_error("Usage: ./build/webserv\nor: ./build/webserv <config>"); 
 	}
+	file_handling(file.c_str());
+	std::cout << "config carregado com sucesso"<< std::endl;
+	tokenizer(file); // define
 }
 
 static void file_handling( const char *file ) {
