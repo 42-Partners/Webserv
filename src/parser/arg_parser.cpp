@@ -2,11 +2,9 @@
 #include <stdexcept>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <string>
-#include <vector>
+#include "config/Tokenizer.hpp"
 
 static void file_handling( const char *file );
-std::vector<std::string> tokenizer(const std::string &file);
 
 void arg_parser( int ac, char** av ) {
 	std::string file = "config/default.conf";
@@ -21,10 +19,10 @@ void arg_parser( int ac, char** av ) {
 	}
 	file_handling(file.c_str());
 	std::cout << "config carregado com sucesso"<< std::endl;
-	tokenizer(file);
+	Tokenizer::tokenize(file);
 
-	{ // test
-		std::vector<std::string> tokens = tokenizer(file);
+	{ // print all tokens for testing
+		std::vector<std::string> tokens = Tokenizer::tokenize(file);
 		for (size_t i = 0; i < tokens.size(); i++) {
 			std::cout << tokens[i] << std::endl;
 		}

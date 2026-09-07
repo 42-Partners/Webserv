@@ -2,10 +2,10 @@
 #include <string>
 #include <fstream>
 #include <sstream>
-#include <iostream>
-#include <vector>
 
-std::vector<std::string> tokenizer(const std::string& file) {
+#include "config/Tokenizer.hpp"
+
+std::vector<std::string> Tokenizer::tokenize(const std::string& file) {
     std::ifstream config_file(file.c_str());
     if (!config_file.is_open())
         throw std::runtime_error("Error: Could not open the file!");
