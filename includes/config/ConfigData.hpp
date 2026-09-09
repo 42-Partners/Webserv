@@ -3,24 +3,40 @@
 
 #include <iostream>
 #include <vector>
+#include <map>
 #include <string>
 
-class Config { // to define
+class LocationConfig {
     public:
-        Config();
-    private:
+        std::string                 path;
+        std::vector<std::string>    allowed_methods;
+        std::string                 root;
+        bool                        autoindex;
+        std::string                 index;
+        std::string                 cgi_extension;
+        std::string                 upload_path;
+        std::pair<int, std::string> redirect;
+
+        LocationConfig(); // enhance with args later
 };
 
-class ServerConfig { // to define
+class ServerConfig {
     public:
-        ServerConfig();
-    private:
+        std::string                         host;
+        int                                 port;
+        std::vector<std::string>            server_names;
+        size_t                              client_max_body_size;
+        std::map<int, std::string>          error_pages;
+        std::vector<LocationConfig>         locations;
+
+        ServerConfig(); // enhance with args later
 };
 
-class LocationConfig { // to define
+class Config {
     public:
-        LocationConfig();
-    private:
+        std::vector<ServerConfig> servers;
+
+        Config(); // enhance with args later
 };
 
 #endif
