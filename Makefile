@@ -17,7 +17,10 @@ RESET		:= \033[0m
 
 # Files
 SRC			:=	src/main.cpp \
-				src/parser/arg_parser.cpp
+				src/parser/arg_parser.cpp \
+				src/config/Tokenizer.cpp \
+				src/config/Parser.cpp \
+				src/config/ConfigData.cpp
 
 OBJ			:= $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 
