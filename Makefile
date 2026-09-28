@@ -1,7 +1,8 @@
 NAME		:= build/webserv
 
 CPP			:= c++
-CPPFLAGS 	:= -Wall -Wextra -Werror -std=c++98 -MMD -MP
+# CPPFLAGS 	:= -Wall -Wextra -Werror -std=c++98 -MMD -MP
+CPPFLAGS 	:= -std=c++98 -MMD -MP
 
 # Directories
 CPP_DIR		:= src
@@ -21,7 +22,8 @@ SRC			:=	src/main.cpp \
 				src/config/Tokenizer.cpp \
 				src/config/Parser.cpp \
 				src/config/ConfigData.cpp \
-				src/HttpRequest/HttpRequest.cpp 
+				src/HttpRequest/HttpRequest.cpp  \
+				src/ServerManager/ServerManager.cpp
 
 OBJ			:= $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 

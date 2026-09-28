@@ -1,7 +1,12 @@
 #ifndef HTTP_REQUEST_HPP
 #define HTTP_REQUEST_HPP
 
-#include "../include.hpp"
+#include <string>
+#include <map>
+#include <vector>
+#include <set>
+#include <iostream>
+#include <stdexcept>
 
 enum RequestState {
 	PARSING_REQUEST_LINE,
