@@ -42,7 +42,7 @@ public:
     HttpRequest&        getRequest();
 
 
-    // Esta função pertence ao objeto que gerencia a conexão do cliente. Ela orquestra o reset de 
+    // Esta função pertence ao objeto que gerencia a conexão do connection. Ela orquestra o reset de 
     // todos os componentes da conexão para permitir que o mesmo socket TCP leia uma nova requisição vinda 
     // do navegador sem precisar fechar a porta (accept/close).
     // Ela chama o _request.clear() internamente, além de resetar os outros módulos da conexão:

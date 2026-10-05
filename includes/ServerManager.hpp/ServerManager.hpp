@@ -9,16 +9,16 @@
 
 class ServerManager {
 private:
-    std::vector<ServerConfig>   _configs;
+    std::vector<ServerConfig>   _serverConfig;
     std::vector<int>            _listenSockets;
     std::vector<struct pollfd>  _pollFds;
-    std::map<int, Client>       _clients;
+    std::map<int, Connection>   _connection;
 
     void _setupListeningSockets();
     void _acceptNewConnection(int listenFd);
-    void _handleClientRead(int clientFd, size_t pollIndex);
-    void _handleClientWrite(int clientFd, size_t pollIndex);
-    void _closeClientConnection(int clientFd, size_t pollIndex);
+    void _handleConnectionRead(int connectionFd, size_t pollIndex);
+    void _handleConnectionWrite(int connectionFd, size_t pollIndex);
+    void _closeConnectionConnection(int connectionFd, size_t pollIndex);
     bool _isListeningSocket(int fd) const;
 
 public:
