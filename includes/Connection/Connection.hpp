@@ -32,6 +32,8 @@ public:
     Connection();
     Connection(int ConnectionFd, const std::string& ConnectionIp, const ServerConfig* config);
     ~Connection();
+    Connection(const Connection& other);
+    Connection& operator=(const Connection& other);
     int                 getFd() const;
     ConnectionState     getState() const;
     void                setState(ConnectionState newState);
