@@ -22,6 +22,7 @@ SRC			:=	src/main.cpp \
 				src/config/Parser.cpp \
 				src/config/Tokenizer.cpp \
 				src/HttpRequest/HttpRequest.cpp  \
+				src/HttpRequest/RequestParser.cpp  \
 				src/HttpResponse/HttpResponse.cpp  \
 				src/parser/arg_parser.cpp \
 				src/ServerManager/ServerManager.cpp \
