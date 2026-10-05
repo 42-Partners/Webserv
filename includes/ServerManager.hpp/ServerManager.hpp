@@ -12,7 +12,7 @@ private:
     std::vector<ServerConfig>   _serverConfig;
     std::vector<int>            _listenSockets;
     std::vector<struct pollfd>  _pollFds;
-    std::map<int, Connection>   _connection;
+    std::map<int, Connection*>   _connection;
 
     void _setupListeningSockets();
     void _acceptNewConnection(int listenFd);

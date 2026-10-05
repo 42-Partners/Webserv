@@ -23,9 +23,10 @@ private:
     std::string         _ip;
     std::string         _readBuffer;
     std::string         _writeBuffer;
-    HttpRequest         _httpRequest;
+    HttpRequest*         _httpRequest;
     time_t              _lastActivity;
     ConnectionState     _connectionState;
+    std::string			_httpResponse;
 
 public:
     Connection();
