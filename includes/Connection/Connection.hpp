@@ -1,5 +1,5 @@
-#ifndef CLIENT_HPP
-#define CLIENT_HPP
+#ifndef CONNECTION_HPP
+#define CONNECTION_HPP
 
 #include <string>
 #include <ctime>
@@ -7,7 +7,7 @@
 #include "config/ConfigData.hpp"
 #include "HttpRequest/HttpRequest.hpp"
 
-enum ClientState {
+enum ConnectionState {
     READING_HEADER,
     READING_BODY,
     PROCESSING,
@@ -16,35 +16,30 @@ enum ClientState {
     READY_TO_CLOSE
 };
 
-class Client {
+class Connection {
 private:
     int                 _fd;
     const ServerConfig* _serverConfig;
     std::string         _ip;
     std::string         _readBuffer;
     std::string         _writeBuffer;
-    HttpRequest         _request;
+    HttpRequest         _httpRequest;
     time_t              _lastActivity;
-    ClientState         _state;
+    ConnectionState     _connectionState;
 
 public:
-    Client();
-    
-    Client(int clientFd, const std::string& clientIp, const ServerConfig* config);
-    
-    ~Client();
-
+    Connection();
+    Connection(int ConnectionFd, const std::string& ConnectionIp, const ServerConfig* config);
+    ~Connection();
     int                 getFd() const;
-    ClientState         getState() const;
-    void                setState(ClientState newState);
+    ConnectionState         getState() const;
+    void                setState(ConnectionState newState);
     time_t              getLastActivity() const;
-    
     void                updateLastActivity();
     void                appendToReadBuffer(const char* buffer, size_t size);
     std::string&        getReadBuffer();
     std::string&        getWriteBuffer();
     HttpRequest&        getRequest();
-    
     void                resetForNextRequest();
 };
 
