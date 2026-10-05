@@ -166,3 +166,18 @@ bool               HttpRequest::isChunked() const
 	return(this->_isChunked);
 
 }
+
+void HttpRequest::clear()
+{
+	this->_method.clear();
+	this->_uri.clear();
+	this->_path.clear();
+	this->_queryString.clear();
+	this->_httpVersion.clear();
+	this->_headers.clear();
+	this->_body.clear();
+	this->_state = PARSING_REQUEST_LINE;
+	this->_errorCode = 0;
+	this->_contentLength = 0;
+	this->_isChunked = false;
+}

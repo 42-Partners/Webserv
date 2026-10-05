@@ -24,6 +24,7 @@ SRC			:=	src/main.cpp \
 				src/config/ConfigData.cpp \
 				src/HttpRequest/HttpRequest.cpp  \
 				src/ServerManager/ServerManager.cpp
+				src/Connection/Connection.cpp \
 
 OBJ			:= $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 
