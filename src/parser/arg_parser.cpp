@@ -3,6 +3,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "config/Tokenizer.hpp"
+#include "config/Parser.hpp"
 
 static void file_handling( const char *file );
 
@@ -19,14 +20,7 @@ void arg_parser( int ac, char** av ) {
 	}
 	file_handling(file.c_str());
 	std::cout << "config carregado com sucesso"<< std::endl;
-	Tokenizer::tokenize(file);
-
-	{ // print all tokens for testing
-		std::vector<std::string> tokens = Tokenizer::tokenize(file);
-		for (size_t i = 0; i < tokens.size(); i++) {
-			std::cout << tokens[i] << std::endl;
-		}
-	}
+	Parser::parse_tokens(Tokenizer::tokenize(file));
 }
 
 static void file_handling( const char *file ) {

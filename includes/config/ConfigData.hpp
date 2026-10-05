@@ -17,7 +17,7 @@ class LocationConfig {
         std::string                 upload_path;
         std::pair<int, std::string> redirect;
 
-        LocationConfig(); // enhance with args later
+        LocationConfig();
 };
 
 class ServerConfig {
@@ -29,14 +29,20 @@ class ServerConfig {
         std::map<int, std::string>          error_pages;
         std::vector<LocationConfig>         locations;
 
-        ServerConfig(); // enhance with args later
+        void addLocation(LocationConfig &locationConf);
+        ServerConfig();
 };
 
 class Config {
     public:
         std::vector<ServerConfig> servers;
+        void addServer(ServerConfig &serverConf);
 
-        Config(); // enhance with args later
+        Config();
 };
+
+std::ostream &operator<<(std::ostream &os, const LocationConfig &loc); // teste
+std::ostream &operator<<(std::ostream &os, const ServerConfig &srv); // teste
+std::ostream &operator<<(std::ostream &os, const Config &conf); // teste
 
 #endif
