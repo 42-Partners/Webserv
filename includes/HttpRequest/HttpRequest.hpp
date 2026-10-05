@@ -63,6 +63,7 @@ public:
 	int                getErrorCode() const;
 	size_t             getContentLength() const;
 	bool               isChunked() const;
+	//Limpa o DTO da requisição
 	void clear();
 };
 
