@@ -32,7 +32,7 @@ public:
     Connection(int ConnectionFd, const std::string& ConnectionIp, const ServerConfig* config);
     ~Connection();
     int                 getFd() const;
-    ConnectionState         getState() const;
+    ConnectionState     getState() const;
     void                setState(ConnectionState newState);
     time_t              getLastActivity() const;
     void                updateLastActivity();
@@ -40,6 +40,12 @@ public:
     std::string&        getReadBuffer();
     std::string&        getWriteBuffer();
     HttpRequest&        getRequest();
+
+
+    // Esta função pertence ao objeto que gerencia a conexão do cliente. Ela orquestra o reset de 
+    // todos os componentes da conexão para permitir que o mesmo socket TCP leia uma nova requisição vinda 
+    // do navegador sem precisar fechar a porta (accept/close).
+    // Ela chama o _request.clear() internamente, além de resetar os outros módulos da conexão:
     void                resetForNextRequest();
 };
 
