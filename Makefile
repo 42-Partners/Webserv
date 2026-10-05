@@ -27,7 +27,9 @@ SRC			:=	src/main.cpp \
 				src/HttpResponse/HttpResponse.cpp  \
 				src/parser/arg_parser.cpp \
 				src/ServerManager/ServerManager.cpp \
-				src/Socket/Socket.cpp
+				src/Socket/Socket.cpp \
+				src/StatusCode/StatusCode.cpp \
+				src/Utils/Utils.cpp
 
 OBJ			:= $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 
