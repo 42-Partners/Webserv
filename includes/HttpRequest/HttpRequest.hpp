@@ -4,34 +4,15 @@
 #include <string>
 #include <map>
 
+enum ParsingState {
+	PARSING_REQUEST_LINE,
+	PARSING_HEADERS,
+	PARSING_BODY,
+	REQUEST_COMPLETE,
+	REQUEST_ERROR
+};
+
 class HttpRequest {
-	public:
-
-		enum ParsingState {
-			PARSING_REQUEST_LINE,
-			PARSING_HEADERS,
-			PARSING_BODY,
-			REQUEST_COMPLETE,
-			REQUEST_ERROR
-		};
-
-		HttpRequest();
-		~HttpRequest();
-	
-		void feed(const std::string & rawBuffer);
-		bool hasHeader(const std::string & key) const;
-
-		ParsingState getState() const;
-		int getErrorCode() const;
-		const std::string& getMethod() const;
-		const std::string& getUri() const;
-		const std::string& getPath() const;
-		const std::string& getQueryString() const;
-		const std::string& getHttpVersion() const;
-		const std::string& getBody() const;
-		std::string getHeader(const std::string & key) const;
-		const std::map<std::string, std::string> & getHeaders() const;
-
 	private:
 		ParsingState _state;
 		int _errorCode;
@@ -47,6 +28,10 @@ class HttpRequest {
 
 		std::map<std::string, std::string> _headers;
 
+	private:
+
+	HttpRequest();
+	~HttpRequest();
 	const std::string& getMethod() const;
 	const std::string& getUri() const;
 	const std::string& getPath() const;
