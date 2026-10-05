@@ -39,6 +39,7 @@ class HttpRequest {
 		int _errorCode;
 		ParsingState _state;
 		bool _isChunked;
+		bool _hasContentLength;
 		size_t _contentLength;
 
 		std::string _method;
