@@ -17,11 +17,14 @@ RESET		:= \033[0m
 
 # Files
 SRC			:=	src/main.cpp \
-				src/parser/arg_parser.cpp \
-				src/config/Tokenizer.cpp \
-				src/config/Parser.cpp \
 				src/config/ConfigData.cpp \
-				src/HttpRequest/HttpRequest.cpp 
+				src/config/Parser.cpp \
+				src/config/Tokenizer.cpp \
+				src/HttpRequest/HttpRequest.cpp  \
+				src/ServerManager/ServerManager.cpp \
+				src/Connection/Connection.cpp \
+				src/HttpResponse/HttpResponse.cpp  \
+				src/parser/arg_parser.cpp \
 
 OBJ			:= $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 
