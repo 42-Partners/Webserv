@@ -17,12 +17,11 @@ RESET		:= \033[0m
 
 # Files
 SRC			:=	src/main.cpp \
-				src/Client/Client.cpp \
 				src/config/ConfigData.cpp \
 				src/config/Parser.cpp \
 				src/config/Tokenizer.cpp \
 				src/HttpRequest/HttpRequest.cpp  \
-				src/ServerManager/ServerManager.cpp
+				src/ServerManager/ServerManager.cpp \
 				src/Connection/Connection.cpp \
 				src/HttpResponse/HttpResponse.cpp  \
 				src/parser/arg_parser.cpp \

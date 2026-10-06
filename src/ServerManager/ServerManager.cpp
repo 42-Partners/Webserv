@@ -72,25 +72,53 @@ void ServerManager::_setupListeningSockets()
 
 void ServerManager::_acceptNewConnection(int listenFd)
 {
+    if(listenFd)
+    {
 
+    }
 }
 
 void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex)
 {
+    if(connectionFd)
+    {
 
+    }
+    if(pollIndex)
+    {
+
+    }
 }
 
 void ServerManager::_handleConnectionWrite(int connectionFd, size_t pollIndex)
 {
+    if(connectionFd)
+    {
 
+    }
+    if(pollIndex)
+    {
+
+    }
 }
 
 void ServerManager::_closeConnectionConnection(int connectionFd, size_t pollIndex)
 {
+    if(connectionFd)
+    {
 
+    }
+    if(pollIndex)
+    {
+
+    }
 }
 
 bool ServerManager::_isListeningSocket(int fd) const
 {
+    if(fd)
+    {
+        
+    }
 	return false;
 }

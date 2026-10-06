@@ -6,7 +6,7 @@
 
 #include "config/ConfigData.hpp"
 #include "HttpRequest/HttpRequest.hpp"
-
+#include "HttpResponse/HttpResponse.hpp"
 enum ConnectionState {
     READING_HEADER,
     READING_BODY,
@@ -26,6 +26,7 @@ private:
     HttpRequest*        _httpRequest;
     time_t              _lastActivity;
     ConnectionState     _connectionState;
+    HttpResponse        _httpResponse;
 
 public:
     Connection();
