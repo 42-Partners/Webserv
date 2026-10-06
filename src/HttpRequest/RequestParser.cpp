@@ -17,7 +17,7 @@ POST /upload/foto.png?user=ana HTTP/1.1\r\nHost: localhost:8080\r\nContent-Type:
 void HttpRequest::feed( std::string & buffer ) { 
 
 	while (_state != REQUEST_COMPLETE && _state != REQUEST_ERROR) {
-		 
+
 		bool advanced = false;
 
 		if (_state == PARSING_REQUEST_LINE)
@@ -33,12 +33,12 @@ void HttpRequest::feed( std::string & buffer ) {
 
 // procura o primeiro CRLF. Se não achou, não consome nada e pede mais dados. Se achou, consome a linha e a valida.
 bool HttpRequest::parseRequestLine( std::string & buffer ) {
-
+	(void)buffer;
 }
 
 // procura o fim do bloco (\r\n\r\n). Se achou, consome o bloco e interpreta linha a linha.
 bool HttpRequest::parseHeaders( std::string & buffer ) {
-
+	(void)buffer;
 }
 
 bool HttpRequest::parseBody( std::string & buffer ) {
@@ -48,25 +48,24 @@ bool HttpRequest::parseBody( std::string & buffer ) {
 }
 
 bool HttpRequest::parseBodyContentLength( std::string & buffer ) {
-
+	(void)buffer;
 }
 
 bool HttpRequest::parseBodyChunked( std::string & buffer ) {
-
+	(void)buffer;
 }
 
 void HttpRequest::setError( int code ) {
-
+	(void)code;
 }
 
-bool HttpRequest::finishHeaders() {
-
-}
+bool HttpRequest::finishHeaders() { }
 
 bool HttpRequest::parseHeaderLine( const std::string & line ) {
-
+	(void)line;
 }
 
 bool HttpRequest::parseUri( const std::string & rawUri ) {
 	//!decodifica: Depois do % vêm dois dígitos hexadecimais, e eles formam o valor do byte. %20 é o byte 0x20 (espaço), e %41 é o byte 0x41 (A). Verificar casos de erro.
+	(void)rawUri;
 } 
