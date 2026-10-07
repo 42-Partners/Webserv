@@ -20,7 +20,7 @@ class HttpRequest {
 		HttpRequest();
 		~HttpRequest();
 	
-		void feed( const std::string & );
+		void feed( std::string & );
 
 		int getErrorCode() const;
 		ParsingState getState() const;
@@ -39,6 +39,7 @@ class HttpRequest {
 		int _errorCode;
 		ParsingState _state;
 		bool _isChunked;
+		bool _hasContentLength;
 		size_t _contentLength;
 
 		std::string _method;
@@ -49,6 +50,16 @@ class HttpRequest {
 		std::string _body;
 
 		std::map<std::string, std::string> _headers;
+
+		bool parseRequestLine( std::string & );
+		bool parseHeaders( std::string & );
+		bool parseBody( std::string & );
+		bool parseBodyContentLength( std::string &  );
+		bool parseBodyChunked( std::string & );
+		void setError( int );
+		bool finishHeaders();
+		bool parseHeaderLine( const std::string & );
+		bool parseUri( const std::string & ); 
 };
 
 #endif

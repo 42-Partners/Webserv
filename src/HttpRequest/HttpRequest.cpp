@@ -1,13 +1,8 @@
 #include "HttpRequest/HttpRequest.hpp"
 
-HttpRequest::HttpRequest()
-{
-	
-}
-HttpRequest::~HttpRequest()
-{
-	
-}
+HttpRequest::HttpRequest() : _errorCode(0), _state(PARSING_REQUEST_LINE), _isChunked(false), _hasContentLength(false), _contentLength(0) { }
+
+HttpRequest::~HttpRequest() { }
 
 int HttpRequest::getErrorCode() const { return(this->_errorCode); }
 
