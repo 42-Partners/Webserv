@@ -11,7 +11,7 @@
 
 class ServerManager {
 private:
-	std::vector<ServerConfig>   _serverConfig;
+	std::vector<ServerConfig>   _serverConfigs;
 	std::vector<int>            _listenSockets;
 	std::vector<struct pollfd>  _pollFds;
 	std::map<int, Connection*>  _connections;
@@ -26,6 +26,7 @@ private:
 	void _checkTimeouts();
 	bool _isListeningSocket(int fd) const;
 	void _closeConnectionConnection(int connectionFd, size_t pollIndex);
+	void _cleanupListeningSockets();
 
 	ServerManager(const ServerManager& other);
 	ServerManager& operator=(const ServerManager& other);

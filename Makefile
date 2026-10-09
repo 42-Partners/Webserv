@@ -25,7 +25,6 @@ SRC			:=	src/main.cpp \
 				src/Connection/Connection.cpp \
 				src/HttpResponse/HttpResponse.cpp  \
 				src/parser/arg_parser.cpp \
-				src/Socket/Socket.cpp
 
 OBJ			:= $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 
