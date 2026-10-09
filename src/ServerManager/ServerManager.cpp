@@ -15,8 +15,8 @@ ServerManager::ServerManager(const std::vector<ServerConfig>& configs)
       _listenSockets(),
       _pollFds(),
       _connections(),
-      _isRunning(false) {
-}
+      _isRunning(false)
+{}
 
 ServerManager::ServerManager(const ServerManager& other)
     : _serverConfig(other._serverConfig),
@@ -121,4 +121,11 @@ bool ServerManager::_isListeningSocket(int fd) const
         
     }
 	return false;
+}
+
+void ServerManager::run()
+{
+    
+    std::cout << "rodando servidor" << std::endl;
+    
 }

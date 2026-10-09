@@ -17,9 +17,9 @@ RESET		:= \033[0m
 
 # Files
 SRC			:=	src/main.cpp \
-				src/config/ConfigData.cpp \
-				src/config/Parser.cpp \
 				src/config/Tokenizer.cpp \
+				src/config/LocationConfig.cpp \
+				src/config/ServerConfig.cpp \
 				src/HttpRequest/HttpRequest.cpp  \
 				src/ServerManager/ServerManager.cpp \
 				src/Connection/Connection.cpp \

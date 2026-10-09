@@ -6,7 +6,7 @@
 #include <vector>
 #include <poll.h>
 
-#include "config/ConfigData.hpp"
+#include "config/ServerConfig.hpp"
 #include "Connection/Connection.hpp"
 
 class ServerManager {
@@ -34,7 +34,6 @@ public:
 	ServerManager();
 	explicit ServerManager(const std::vector<ServerConfig>& configs);
 	~ServerManager();
-
 	void run();
 };
 

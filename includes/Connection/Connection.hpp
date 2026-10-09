@@ -2,11 +2,11 @@
 #define CONNECTION_HPP
 
 #include <string>
-#include <ctime>
 
-#include "config/ConfigData.hpp"
 #include "HttpRequest/HttpRequest.hpp"
 #include "HttpResponse/HttpResponse.hpp"
+#include "config/ServerConfig.hpp"
+
 enum ConnectionState {
     READING_HEADER,
     READING_BODY,
