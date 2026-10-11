@@ -3,6 +3,8 @@
 #include "Utils/Utils.hpp"
 
 static const std::string CRLF = "\r\n";
+static const char * const METHODS[] = {"GET", "POST", "DELETE"};
+
 /*
 400 Bad Request ->	linha de requisição malformada, header sem :, Content-Length inválido, chunk com tamanho inválido, Host ausente em HTTP/1.1
 413 Content Too Large -> body maior que o client_max_body_size
@@ -23,10 +25,10 @@ void HttpRequest::feed( std::string & buffer ) {
 
 		if (_state == PARSING_REQUEST_LINE)
 			advanced = parseRequestLine(buffer);
-		else if (_state == PARSING_HEADERS)
-			advanced = parseHeaders(buffer);
-		else if (_state == PARSING_BODY)
-			advanced = parseBody(buffer);
+		// else if (_state == PARSING_HEADERS)
+		// 	advanced = parseHeaders(buffer);
+		// else if (_state == PARSING_BODY)
+		// 	advanced = parseBody(buffer);
 		if (!advanced)
 			break;
 	}
@@ -70,24 +72,91 @@ bool HttpRequest::parseRequestLine( std::string & buffer ) {
 	_state = PARSING_HEADERS;
 	return true;
 }
-// POST
+
 bool HttpRequest::parseMethod( const std::string & rawMethod ) {
-	(void)rawMethod;
 
-	return true;
+	for ( size_t i = 0; i < sizeof(METHODS) / sizeof(METHODS[0]); i++ ) {
+		if ( rawMethod == METHODS[i] ) {
+			_method = rawMethod;
+			return true;
+		}
+	}
+
+	for ( size_t i = 0; i < rawMethod.size(); i++ ) {
+		if ( !isUpper(rawMethod[i]) )
+			return setError( STATUS_BAD_REQUEST );
+	}
+
+	return setError( STATUS_NOT_IMPLEMENTED );
 }
-// /upload/foto.png?user=ana
+
 bool HttpRequest::parseUri( const std::string & rawUri ) {
-	//!decodifica: Depois do % vêm dois dígitos hexadecimais, e eles formam o valor do byte. %20 é o byte 0x20 (espaço), e %41 é o byte 0x41 (A). Verificar casos de erro.
-	(void)rawUri;
-	
-	return true;
-}
-// HTTP/1.1
-bool HttpRequest::parseVersion( const std::string & rawVersion ) {
-	(void)rawVersion;
+	if (rawUri[0] != '/')
+		return setError( STATUS_BAD_REQUEST );
+
+	size_t pos = rawUri.find('?');
+
+	std::string path;
+	std::string query;
+
+	if ( pos == std::string::npos )
+		path = rawUri;
+	else {
+		path = rawUri.substr(0, pos);
+		query = rawUri.substr(pos + 1);
+	}
+
+	std::string decodedPath;
+	for (size_t i = 0; i < path.size(); i++) {
+		if (path[i] == '%') {
+			if ( i + 2 >= path.size() || !isHexDigit(path[i+1]) || !isHexDigit(path[i+2]) )
+					return setError( STATUS_BAD_REQUEST );
+			int first = hexCharToInt(path[i+1]);
+			int second = hexCharToInt(path[i+2]);
+			int byte = first * 16 + second;
+			if (byte < 32 || byte >= 127)
+				return setError( STATUS_BAD_REQUEST );
+			decodedPath += static_cast<char>(byte);
+			i += 2;
+		}
+		else {
+			if ( path[i] < 32 || path[i] >= 127 )
+				return setError( STATUS_BAD_REQUEST );
+			decodedPath += path[i];
+		}
+	}
+
+	std::vector<std::string> decodedPathParts = split( decodedPath, "/" );
+
+	for (size_t i = 0; i < decodedPathParts.size(); i++) {
+		if ( decodedPathParts[i] == ".." )
+			return setError( STATUS_BAD_REQUEST );
+	}
+
+	_uri = rawUri;
+	_path = decodedPath;
+	_queryString = query;
 
 	return true;
+}
+
+bool HttpRequest::parseVersion( const std::string & rawVersion ) {
+
+	if (rawVersion == "HTTP/1.0" || rawVersion == "HTTP/1.1") {
+		_httpVersion = rawVersion;
+		return true;
+	}
+
+	if (rawVersion.size() != 8)
+		return setError( STATUS_BAD_REQUEST );
+
+	if (rawVersion.compare(0, 5, "HTTP/"))
+		return setError( STATUS_BAD_REQUEST );
+
+	if ( !isDigit(rawVersion[5]) || rawVersion[6] != '.' || !isDigit(rawVersion[7]) )
+		return setError( STATUS_BAD_REQUEST );
+
+	return setError( STATUS_VERSION_NOT_SUPPORTED );
 }
 // Host: localhost:8080\r\nContent-Type: image/png -> procura o fim do bloco (\r\n\r\n). Se achou, consome o bloco e interpreta linha a linha.
 bool HttpRequest::parseHeaders( std::string & buffer ) {
@@ -128,3 +197,4 @@ bool HttpRequest::setError( int code ) {
 	_state = REQUEST_ERROR;
 	return false;
 }
+
