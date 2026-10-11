@@ -1,5 +1,6 @@
 #include "HttpRequest/HttpRequest.hpp"
 #include "StatusCode/StatusCode.hpp"
+#include "Utils/Utils.hpp"
 
 static const std::string CRLF = "\r\n";
 /*
@@ -12,9 +13,7 @@ static const std::string CRLF = "\r\n";
 411 Length Required -> POST sem Content-Length e sem chunked.
 */
 
-/*
-POST /upload/foto.png?user=ana HTTP/1.1\r\nHost: localhost:8080\r\nContent-Type: image/png\r\nContent-Length: 12\r\n\r\nconteudo....
-*/
+// POST /upload/foto.png?user=ana HTTP/1.1\r\nHost: localhost:8080\r\nContent-Type: image/png\r\nContent-Length: 12\r\n\r\nconteudo....
 
 void HttpRequest::feed( std::string & buffer ) { 
 
@@ -53,55 +52,50 @@ bool HttpRequest::parseRequestLine( std::string & buffer ) {
 	std::string line = buffer.substr(0, pos);
 	buffer.erase(0, pos + CRLF.size());
 
-	size_t space_1 = line.find(' ');
+	std::vector<std::string> requestParts = split( line, " " );
 
-	if (space_1 == std::string::npos || space_1 == 0)
+	if (requestParts.size() != 3)
 		return setError(STATUS_BAD_REQUEST);
-	std::string rawMethod = line.substr(0, space_1);
 
-	size_t space_2 = line.find(' ', space_1+1);
+	for (size_t i = 0; i < requestParts.size(); i++) {
+		if (requestParts[i].empty())
+			return setError(STATUS_BAD_REQUEST);
+	}
 
-	if (space_2 == std::string::npos || space_2 == space_1+1)
-		return setError(STATUS_BAD_REQUEST);
-	std::string rawUri = line.substr(space_1+1, space_2-space_1-1);
-
-	std::string rawVersion = line.substr(space_2+1);
-
-	if (!parseMethod( rawMethod )
-	|| !parseUri( rawUri )
-	|| !parseVersion( rawVersion ))
+	if (!parseMethod( requestParts[0] )
+	 || !parseUri( requestParts[1] )
+	 || !parseVersion( requestParts[2] ))
 		return false;
 
 	_state = PARSING_HEADERS;
 	return true;
 }
-
+// POST
 bool HttpRequest::parseMethod( const std::string & rawMethod ) {
 	(void)rawMethod;
 
 	return true;
 }
-
+// /upload/foto.png?user=ana
 bool HttpRequest::parseUri( const std::string & rawUri ) {
 	//!decodifica: Depois do % vêm dois dígitos hexadecimais, e eles formam o valor do byte. %20 é o byte 0x20 (espaço), e %41 é o byte 0x41 (A). Verificar casos de erro.
 	(void)rawUri;
 	
 	return true;
 }
-
+// HTTP/1.1
 bool HttpRequest::parseVersion( const std::string & rawVersion ) {
 	(void)rawVersion;
 
 	return true;
 }
-
-// procura o fim do bloco (\r\n\r\n). Se achou, consome o bloco e interpreta linha a linha.
+// Host: localhost:8080\r\nContent-Type: image/png -> procura o fim do bloco (\r\n\r\n). Se achou, consome o bloco e interpreta linha a linha.
 bool HttpRequest::parseHeaders( std::string & buffer ) {
 	(void)buffer;
 
 	return true;
 }
-
+// Host: localhost:8080
 bool HttpRequest::parseHeaderLine( const std::string & line ) {
 	(void)line;
 
@@ -111,7 +105,7 @@ bool HttpRequest::parseHeaderLine( const std::string & line ) {
 bool HttpRequest::finishHeaders() {
 	return true;
 }
-
+// conteudo....
 bool HttpRequest::parseBody( std::string & buffer ) {
 	if (_isChunked)
 		return parseBodyChunked( buffer );
