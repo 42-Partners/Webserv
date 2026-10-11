@@ -45,7 +45,7 @@ bool isLower( char c ) {
 	return c >= 'a' && c <= 'z'; 
 }
 
-int hexaToInt( char c ) {
+int hexCharToInt( char c ) {
 	if (c >= 'A' && c <= 'F')
 		return c - 'A' + 10;
 	if (c >= 'a' && c <= 'f')
