@@ -26,3 +26,29 @@ std::vector<std::string> split( std::string line, const std::string & delimiter 
 
 	return res;
 }
+
+bool isDigit( char c ) {
+	return c >= '0' && c <= '9'; 
+}
+
+bool isHexDigit( char c ) {
+	return isDigit( c )
+		|| (c >= 'A' && c <= 'F')
+		|| (c >= 'a' && c <= 'f');
+}
+
+bool isUpper( char c ) {
+	return c >= 'A' && c <= 'Z'; 
+}
+
+bool isLower( char c ) {
+	return c >= 'a' && c <= 'z'; 
+}
+
+int hexaToInt( char c ) {
+	if (c >= 'A' && c <= 'F')
+		return c - 'A' + 10;
+	if (c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	return c - '0';
+}
