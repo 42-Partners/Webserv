@@ -52,14 +52,26 @@ class HttpRequest {
 		std::map<std::string, std::string> _headers;
 
 		bool parseRequestLine( std::string & );
+		bool parseMethod( const std::string & );
+		bool parseUri( const std::string & );
+		bool parseVersion( const std::string & );
+
 		bool parseHeaders( std::string & );
+		bool parseHeaderLine( const std::string & );
+		bool finishHeaders();
+
 		bool parseBody( std::string & );
 		bool parseBodyContentLength( std::string &  );
 		bool parseBodyChunked( std::string & );
-		void setError( int );
-		bool finishHeaders();
-		bool parseHeaderLine( const std::string & );
-		bool parseUri( const std::string & ); 
+
+		bool setError( int );
+
+		static const size_t MAX_REQUEST_LINE = 8192;
+		static const size_t MAX_HEADERS_SIZE = 8192;
+		static const size_t MAX_HEADER_COUNT = 100;
+		static const size_t MAX_CHUNK_SIZE_LINE = 32;
+
+		static const size_t DEFAULT_MAX_BODY = 1048576; //adicionar setter para _maxBodySize (vem do serverconfig)
 };
 
 #endif
