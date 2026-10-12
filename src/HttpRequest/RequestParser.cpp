@@ -197,3 +197,4 @@ bool HttpRequest::setError( int code ) {
 	_state = REQUEST_ERROR;
 	return false;
 }
+

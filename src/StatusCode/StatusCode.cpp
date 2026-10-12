@@ -13,7 +13,11 @@ std::string reasonPhrase(int code) {
 		case STATUS_PAYLOAD_TOO_LARGE:		return "Content Too Large";
 		case STATUS_URI_TOO_LONG:			return "URI Too Long";
 		case STATUS_HEADERS_TOO_LARGE:		return "Request Header Fields Too Large";
+		case STATUS_INTERNAL_SERVER_ERROR:	return "Internal Server Error";
 		case STATUS_NOT_IMPLEMENTED:		return "Not Implemented";
+		case STATUS_BAD_GATEWAY:			return "Bad Gateway";
+		case STATUS_GATEWAY_TIMEOUT:		return "Gateway Timeout";
+		case STATUS_VERSION_NOT_SUPPORTED:	return "HTTP Version Not Supported";
 		default:							return "Unknown";
 	}
 }

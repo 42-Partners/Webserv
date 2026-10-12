@@ -8,6 +8,8 @@ CPP_DIR		:= src
 HPP_DIR		:= includes
 OBJ_DIR		:= build
 
+TEST_DIR    := $(OBJ_DIR)/test
+
 # Colors
 GREEN 		:= \033[0;32m
 YELLOW		:= \033[0;33m
@@ -27,7 +29,6 @@ SRC			:=	src/main.cpp \
 				src/parser/arg_parser.cpp \
 				src/HttpRequest/RequestParser.cpp  \
 				src/HttpRequest/RequestProcessor.cpp  \
-				src/Socket/Socket.cpp \
 				src/StatusCode/StatusCode.cpp \
 				src/Utils/Utils.cpp
 
@@ -58,6 +59,29 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: all clean fclean re
-
 -include $(DEPS)
+
+# tests
+
+TEST_REQUEST     := $(TEST_DIR)/test_request_line
+
+TEST_REQUEST_SRC := tests/request/parser.cpp \
+					src/HttpRequest/HttpRequest.cpp \
+					src/HttpRequest/RequestParser.cpp \
+					src/Utils/Utils.cpp
+
+TEST_CPPFLAGS    := $(CPPFLAGS) -I$(HPP_DIR) -Isrc
+
+$(TEST_DIR):
+	mkdir -p $(TEST_DIR)
+
+$(TEST_REQUEST): $(TEST_REQUEST_SRC) | $(TEST_DIR)
+	@echo "$(YELLOW)🔧 Building request line tests...$(RESET)"
+	@$(CPP) $(TEST_CPPFLAGS) $(TEST_REQUEST_SRC) -o $@
+	@echo "$(GREEN)✅ Tests built successfully$(RESET)"
+
+test: $(TEST_REQUEST)
+	@echo "$(BLUE)🧪 Running request line tests...$(RESET)"
+	@./$(TEST_REQUEST)
+
+.PHONY: all clean fclean re test
