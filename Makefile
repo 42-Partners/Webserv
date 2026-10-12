@@ -19,17 +19,16 @@ RESET		:= \033[0m
 
 # Files
 SRC			:=	src/main.cpp \
-				src/Client/Client.cpp \
-				src/config/ConfigData.cpp \
-				src/config/Parser.cpp \
 				src/config/Tokenizer.cpp \
+				src/config/LocationConfig.cpp \
+				src/config/ServerConfig.cpp \
 				src/HttpRequest/HttpRequest.cpp  \
-				src/HttpRequest/RequestParser.cpp  \
-				src/HttpRequest/RequestProcessor.cpp  \
+				src/ServerManager/ServerManager.cpp \
+				src/Connection/Connection.cpp \
 				src/HttpResponse/HttpResponse.cpp  \
 				src/parser/arg_parser.cpp \
-				src/ServerManager/ServerManager.cpp \
-				src/Socket/Socket.cpp \
+				src/HttpRequest/RequestParser.cpp  \
+				src/HttpRequest/RequestProcessor.cpp  \
 				src/StatusCode/StatusCode.cpp \
 				src/Utils/Utils.cpp
 
