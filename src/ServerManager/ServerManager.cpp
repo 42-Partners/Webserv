@@ -13,6 +13,8 @@
 #include <stdexcept>
 #include <sys/poll.h>
 #include <unistd.h>
+#include <errno.h>
+#include <algorithm>
 
 ServerManager::ServerManager(const std::vector<ServerConfig>& configs)
 	: _serverConfigs(configs) {
@@ -112,7 +114,7 @@ void ServerManager::run() {
 			}
 			_isRunning = true;
 		while (_isRunning) {
-			int pollCount = poll(_pollFds.data(), _pollFds.size(), 1000);
+			int pollCount = poll(_pollFds, _pollFds.size(), 1000);
 
 			if (pollCount < 0) {
 				if (errno == EINTR) continue;
@@ -120,7 +122,7 @@ void ServerManager::run() {
 				break;
 			}
 			if (pollCount == 0) {
-				_checkTimeouts();
+				//_checkTimeouts();
 				continue;
 			}
 			for (size_t i = 0; i < _pollFds.size(); ++i) {
@@ -131,15 +133,15 @@ void ServerManager::run() {
 
             if (_isListeningSocket(fd)) {
                 if (revents & POLLIN) {
-                    _acceptNewConnection(fd);
+                _acceptNewConnection(fd);
                 }
             } else {
                 if (revents & (POLLHUP | POLLERR)) {
-                    _closeConnection(fd, i);
+                    //_closeConnection(fd, i);
                 } else if (revents & POLLIN) {
-                    _handleConnectionRead(fd, i);
+                    //_handleConnectionRead(fd, i);
                 } else if (revents & POLLOUT) {
-                    _handleConnectionWrite(fd, i);
+                   // _handleConnectionWrite(fd, i);
                 }
             }
         }
@@ -149,13 +151,43 @@ void ServerManager::run() {
 		_cleanupListeningSockets();
 		throw;
 	}
-
-	
-
-	std::cin.get();
 }
 
-ServerManager::_setupListeningSockets()
+void ServerManager::_acceptNewConnection(int listenFd)
 {
 
 }
+// void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex)
+// {
+
+// }
+// void ServerManager::_handleConnectionWrite(int connectionFd, size_t pollIndex)
+// {
+
+// }
+// void ServerManager::_closeConnection(int connectionFd, size_t pollIndex)
+// {
+
+// }
+// void ServerManager::_checkTimeouts()
+// {
+
+// }
+bool ServerManager::_isListeningSocket(int fd)
+{
+	std::vector<int>::iterator it = std::find(_listenSockets.begin(), _listenSockets.end(), fd);
+    if (it != _listenSockets.end()) {
+		std::cout << "sim\n";
+		return true;
+    } else {
+        return false;
+    }
+}
+// void ServerManager::_closeConnectionConnection(int connectionFd, size_t pollIndex)
+// {
+
+// }
+// void ServerManager::_cleanupListeningSockets()
+// {
+
+// }
