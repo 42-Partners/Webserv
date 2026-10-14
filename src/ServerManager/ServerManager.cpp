@@ -11,6 +11,8 @@
 #include <set>
 #include <utility>
 #include <stdexcept>
+#include <sys/poll.h>
+#include <unistd.h>
 
 ServerManager::ServerManager(const std::vector<ServerConfig>& configs)
 	: _serverConfigs(configs) {
@@ -47,13 +49,8 @@ void ServerManager::_setupListeningSockets() {
 			if (listenFd < 0) {
 				throw std::runtime_error("Falha ao criar o socket.");
 			}
-			int flags = fcntl(listenFd, F_GETFL, 0);
-			if (flags == -1) {
-				throw std::runtime_error("Fail: error to get flag F_GETFL in file socket.");
-			}
-			flags |= O_NONBLOCK;
-			if (fcntl(listenFd, F_SETFL, flags) == -1) {
-				throw std::runtime_error("Fail: error to define socket how non block.");
+			if (fcntl(listenFd, F_SETFL, O_NONBLOCK) == -1) {
+				throw std::runtime_error("Fail: error to define socket as non block.");
 			}
 			int opt = 1;
 			if (setsockopt(listenFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
@@ -104,7 +101,61 @@ void ServerManager::run() {
 	_setupListeningSockets();
 
 	std::cout << "\n[OK] Todas as portas foram abertas em LISTEN." << std::endl;
-	std::cout << "[INFO] Pressione ENTER no terminal para encerrar o teste da Tarefa 6..." << std::endl;
+	try{
+			struct pollfd structPollFds;
+			for (size_t i = 0; i < _listenSockets.size(); ++i) {
+				structPollFds.fd = _listenSockets[i];
+				structPollFds.events = POLLIN;
+				structPollFds.revents = 0;
+				_pollFds.push_back(structPollFds);
+				
+			}
+			_isRunning = true;
+		while (_isRunning) {
+			int pollCount = poll(_pollFds.data(), _pollFds.size(), 1000);
+
+			if (pollCount < 0) {
+				if (errno == EINTR) continue;
+				throw std::runtime_error("Erro na função poll()\n");
+				break;
+			}
+			if (pollCount == 0) {
+				_checkTimeouts();
+				continue;
+			}
+			for (size_t i = 0; i < _pollFds.size(); ++i) {
+            int fd = _pollFds[i].fd;
+            short revents = _pollFds[i].revents;
+
+            if (revents == 0) continue;
+
+            if (_isListeningSocket(fd)) {
+                if (revents & POLLIN) {
+                    _acceptNewConnection(fd);
+                }
+            } else {
+                if (revents & (POLLHUP | POLLERR)) {
+                    _closeConnection(fd, i);
+                } else if (revents & POLLIN) {
+                    _handleConnectionRead(fd, i);
+                } else if (revents & POLLOUT) {
+                    _handleConnectionWrite(fd, i);
+                }
+            }
+        }
+		}
+
+	} catch (const std::exception& e) {
+		_cleanupListeningSockets();
+		throw;
+	}
+
+	
 
 	std::cin.get();
+}
+
+ServerManager::_setupListeningSockets()
+{
+
 }
