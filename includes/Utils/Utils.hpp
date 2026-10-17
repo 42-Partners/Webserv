@@ -5,14 +5,16 @@
 #include <vector>
 
 std::string toLower( std::string );
+std::string trim( std::string );
 
-std::vector<std::string> split( std::string line, const std::string & delimiter );
+std::vector<std::string> split( std::string, const std::string & );
 
-bool isDigit( char c );
-bool isHexDigit( char c );
-bool isUpper( char c );
-bool isLower( char c );
+bool isDigit( char );
+bool isHexDigit( char );
+bool isUpper( char );
+bool isLower( char );
+bool isAllDigits( const std::string & );
 
-int hexCharToInt( char c );
+int hexCharToInt( char );
 
 #endif
