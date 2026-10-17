@@ -2,18 +2,15 @@
 #include "StatusCode/StatusCode.hpp"
 #include "Utils/Utils.hpp"
 
+#include <sstream>
+#include <utility>
+
 static const std::string CRLF = "\r\n";
+static const std::string HEADERS_END = "\r\n\r\n";
 static const char * const METHODS[] = {"GET", "POST", "DELETE"};
 
-/*
-400 Bad Request ->	linha de requisição malformada, header sem :, Content-Length inválido, chunk com tamanho inválido, Host ausente em HTTP/1.1
-413 Content Too Large -> body maior que o client_max_body_size
-414 URI Too Long -> linha de requisição acima do limite
-431 Request Header Fields Too Large -> bloco de headers acima do limite
-501 Not Implemented -> método que você não conhece (PATCH, FOO...)
-505 HTTP Version Not Supported -> versão diferente de 1.0 e 1.1
-411 Length Required -> POST sem Content-Length e sem chunked.
-*/
+static bool isValidHeaderName( const std::string & s );
+static bool isValidHeaderValue( const std::string & s );
 
 // POST /upload/foto.png?user=ana HTTP/1.1\r\nHost: localhost:8080\r\nContent-Type: image/png\r\nContent-Length: 12\r\n\r\nconteudo....
 
@@ -25,8 +22,8 @@ void HttpRequest::feed( std::string & buffer ) {
 
 		if (_state == PARSING_REQUEST_LINE)
 			advanced = parseRequestLine(buffer);
-		// else if (_state == PARSING_HEADERS)
-		// 	advanced = parseHeaders(buffer);
+		else if (_state == PARSING_HEADERS)
+			advanced = parseHeaders(buffer);
 		// else if (_state == PARSING_BODY)
 		// 	advanced = parseBody(buffer);
 		if (!advanced)
@@ -158,22 +155,110 @@ bool HttpRequest::parseVersion( const std::string & rawVersion ) {
 
 	return setError( STATUS_VERSION_NOT_SUPPORTED );
 }
-// Host: localhost:8080\r\nContent-Type: image/png -> procura o fim do bloco (\r\n\r\n). Se achou, consome o bloco e interpreta linha a linha.
-bool HttpRequest::parseHeaders( std::string & buffer ) {
-	(void)buffer;
 
-	return true;
+bool HttpRequest::parseHeaders( std::string & buffer ) {
+	size_t pos = buffer.find(CRLF);
+	if (pos == 0) {
+		buffer.erase(0, CRLF.size());
+		return finishHeaders();
+	}
+	
+	pos = buffer.find(HEADERS_END);
+	if (pos == std::string::npos) {
+		if (buffer.size() >= MAX_HEADERS_SIZE)
+			return setError(STATUS_HEADERS_TOO_LARGE);
+		return false;
+	}
+
+	if (pos >= MAX_HEADERS_SIZE)
+		return setError(STATUS_HEADERS_TOO_LARGE);
+
+	std::vector<std::string> headerLines = split( buffer.substr(0, pos), CRLF );
+	if ( headerLines.size() > MAX_HEADER_COUNT )
+		return setError(STATUS_HEADERS_TOO_LARGE);
+
+	for (size_t i = 0; i < headerLines.size(); i++) {
+		if (!parseHeaderLine( headerLines[i] ))
+			return false;
+	}
+
+	buffer.erase(0, pos + HEADERS_END.size());
+
+	return finishHeaders();
 }
-// Host: localhost:8080
+
 bool HttpRequest::parseHeaderLine( const std::string & line ) {
-	(void)line;
+	size_t pos = line.find(':');
+	if ( pos == std::string::npos )
+		return setError( STATUS_BAD_REQUEST );
+
+	std::string key = toLower(line.substr(0, pos));
+	if ( !isValidHeaderName( key ) )
+		return setError( STATUS_BAD_REQUEST );
+
+	std::string value = trim(line.substr(pos + 1));
+	if ( !isValidHeaderValue( value ) )
+		return setError( STATUS_BAD_REQUEST );
+
+	std::pair< map_iterator, bool > res;
+
+	res = _headers.insert( std::make_pair(key, value) );
+
+	if ( !res.second ) {
+		if (key == "host" ||
+			key == "content-length" ||
+			key == "transfer-encoding")
+			return setError( STATUS_BAD_REQUEST );
+		else {
+			if ( !value.empty() )
+				_headers[key] = _headers[key] + ", " + value;
+		}
+	}
 
 	return true;
 }
 
 bool HttpRequest::finishHeaders() {
+	map_iterator pos = _headers.find("host");
+	if ( pos == _headers.end() || pos->second.empty() )
+		return setError( STATUS_BAD_REQUEST );
+	
+	pos = _headers.find("transfer-encoding");
+	if ( pos != _headers.end() ) {
+		if ( toLower(pos->second) == "chunked" )
+			_isChunked = true;
+		else
+			return setError( STATUS_BAD_REQUEST );
+	}
+
+	pos = _headers.find("content-length");
+	if ( pos != _headers.end() ) {
+		if ( isAllDigits(pos->second) ) {
+			std::istringstream ss(pos->second);
+			size_t length = 0;
+			ss >> length;
+			if ( ss.fail() )
+				return setError( STATUS_BAD_REQUEST );
+			if ( length > DEFAULT_MAX_BODY )
+				return setError( STATUS_PAYLOAD_TOO_LARGE );
+			_hasContentLength = true;
+			_contentLength = length;
+		}
+		else
+			return setError( STATUS_BAD_REQUEST );
+	}
+
+	if ( _isChunked && _hasContentLength )
+		return setError( STATUS_BAD_REQUEST );
+
+	if ( _isChunked || (_hasContentLength && _contentLength > 0) )
+		_state = PARSING_BODY;
+	else
+		_state = REQUEST_COMPLETE;
+
 	return true;
 }
+
 // conteudo....
 bool HttpRequest::parseBody( std::string & buffer ) {
 	if (_isChunked)
@@ -198,3 +283,23 @@ bool HttpRequest::setError( int code ) {
 	return false;
 }
 
+static bool isValidHeaderName( const std::string & s ) {
+	if (s.empty())
+		return false;
+	
+	for (size_t i = 0; i < s.size(); i++) {
+		if (s[i] <= 32 || s[i] >= 127)
+			return false;
+	}
+
+	return true;
+}
+
+static bool isValidHeaderValue( const std::string & s ) {
+	for (size_t i = 0; i < s.size(); i++) {
+		if ( (s[i] < 32 && s[i] != 9) || s[i] >= 127 )
+			return false;
+	}
+
+	return true;
+}
