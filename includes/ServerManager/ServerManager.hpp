@@ -16,6 +16,7 @@ private:
 	std::vector<struct pollfd>  _pollFds;
 	std::map<int, Connection*>  _connections;
 	bool                        _isRunning;
+	std::map<int, const ServerConfig*> _listenSocketMap;
 
 	// Métodos auxiliares de I/O
 	void _setupListeningSockets();
@@ -27,9 +28,11 @@ private:
 	bool _isListeningSocket(int fd);
 	void _closeConnectionConnection(int connectionFd, size_t pollIndex);
 	void _cleanupListeningSockets();
+	size_t _findPollIndex(int fd) const;
 
 	ServerManager(const ServerManager& other);
 	ServerManager& operator=(const ServerManager& other);
+	const ServerConfig* _getConfigForListenSocket(int listenFd) const;
 
 public:
 	ServerManager();

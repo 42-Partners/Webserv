@@ -6,6 +6,7 @@
 #include "HttpRequest/HttpRequest.hpp"
 #include "HttpResponse/HttpResponse.hpp"
 #include "config/ServerConfig.hpp"
+#include <ctime>
 
 enum ConnectionState {
     READING_HEADER,
