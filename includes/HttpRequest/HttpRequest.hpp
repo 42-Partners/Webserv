@@ -39,6 +39,7 @@ class HttpRequest {
 	private:
 		int _errorCode;
 		ParsingState _state;
+		bool _keepAlive;
 		bool _isChunked;
 		bool _hasContentLength;
 		size_t _contentLength;

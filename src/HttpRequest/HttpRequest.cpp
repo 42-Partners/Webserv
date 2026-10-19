@@ -3,6 +3,7 @@
 HttpRequest::HttpRequest()
     : _errorCode(0),
       _state(PARSING_REQUEST_LINE),
+      _keepAlive(true),
       _isChunked(false),
       _hasContentLength(false),
       _contentLength(0),
@@ -11,6 +12,7 @@ HttpRequest::HttpRequest()
 HttpRequest::HttpRequest( size_t maxSize ) 
     : _errorCode(0),
       _state(PARSING_REQUEST_LINE),
+      _keepAlive(true),
       _isChunked(false),
       _hasContentLength(false),
       _contentLength(0),

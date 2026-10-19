@@ -2,6 +2,9 @@
 #include "StatusCode/StatusCode.hpp"
 #include "Utils/Utils.hpp"
 
+#include <cerrno>
+#include <cstdlib>
+#include <limits>
 #include <sstream>
 #include <utility>
 
@@ -11,8 +14,6 @@ static const char * const METHODS[] = {"GET", "POST", "DELETE"};
 
 static bool isValidHeaderName( const std::string & s );
 static bool isValidHeaderValue( const std::string & s );
-
-// POST /upload/foto.png?user=ana HTTP/1.1\r\nHost: localhost:8080\r\nContent-Type: image/png\r\nContent-Length: 12\r\n\r\nconteudo....
 
 void HttpRequest::feed( std::string & buffer ) { 
 
@@ -24,8 +25,8 @@ void HttpRequest::feed( std::string & buffer ) {
 			advanced = parseRequestLine(buffer);
 		else if (_state == PARSING_HEADERS)
 			advanced = parseHeaders(buffer);
-		// else if (_state == PARSING_BODY)
-		// 	advanced = parseBody(buffer);
+		else if (_state == PARSING_BODY)
+			advanced = parseBody(buffer);
 		if (!advanced)
 			break;
 	}
@@ -61,9 +62,9 @@ bool HttpRequest::parseRequestLine( std::string & buffer ) {
 			return setError(STATUS_BAD_REQUEST);
 	}
 
-	if (!parseMethod( requestParts[0] )
-	 || !parseUri( requestParts[1] )
-	 || !parseVersion( requestParts[2] ))
+	if (!parseMethod( requestParts[0] ) ||
+		!parseUri( requestParts[1] ) ||
+		!parseVersion( requestParts[2] ))
 		return false;
 
 	_state = PARSING_HEADERS;
@@ -88,7 +89,7 @@ bool HttpRequest::parseMethod( const std::string & rawMethod ) {
 }
 
 bool HttpRequest::parseUri( const std::string & rawUri ) {
-	if (rawUri[0] != '/')
+	if ( rawUri.empty() || rawUri[0] != '/')
 		return setError( STATUS_BAD_REQUEST );
 
 	size_t pos = rawUri.find('?');
@@ -106,8 +107,10 @@ bool HttpRequest::parseUri( const std::string & rawUri ) {
 	std::string decodedPath;
 	for (size_t i = 0; i < path.size(); i++) {
 		if (path[i] == '%') {
-			if ( i + 2 >= path.size() || !isHexDigit(path[i+1]) || !isHexDigit(path[i+2]) )
-					return setError( STATUS_BAD_REQUEST );
+			if ( i + 2 >= path.size() ||
+				!isHexDigit(path[i+1]) ||
+				!isHexDigit(path[i+2]) )
+				return setError( STATUS_BAD_REQUEST );
 			int first = hexCharToInt(path[i+1]);
 			int second = hexCharToInt(path[i+2]);
 			int byte = first * 16 + second;
@@ -139,15 +142,15 @@ bool HttpRequest::parseUri( const std::string & rawUri ) {
 
 bool HttpRequest::parseVersion( const std::string & rawVersion ) {
 
-	if (rawVersion == "HTTP/1.0" || rawVersion == "HTTP/1.1") {
+	if ( rawVersion == "HTTP/1.1" ) {
 		_httpVersion = rawVersion;
 		return true;
 	}
 
-	if (rawVersion.size() != 8)
+	if ( rawVersion.size() != 8 )
 		return setError( STATUS_BAD_REQUEST );
 
-	if (rawVersion.compare(0, 5, "HTTP/"))
+	if ( rawVersion.compare(0, 5, "HTTP/") )
 		return setError( STATUS_BAD_REQUEST );
 
 	if ( !isDigit(rawVersion[5]) || rawVersion[6] != '.' || !isDigit(rawVersion[7]) )
@@ -207,11 +210,12 @@ bool HttpRequest::parseHeaderLine( const std::string & line ) {
 	if ( !res.second ) {
 		if (key == "host" ||
 			key == "content-length" ||
-			key == "transfer-encoding")
+			key == "transfer-encoding" ||
+			key == "content-type")
 			return setError( STATUS_BAD_REQUEST );
 		else {
 			if ( !value.empty() )
-				_headers[key] = _headers[key] + ", " + value;
+				_headers[key] = _headers[key] + "," + value;
 		}
 	}
 
@@ -234,18 +238,29 @@ bool HttpRequest::finishHeaders() {
 	pos = _headers.find("content-length");
 	if ( pos != _headers.end() ) {
 		if ( isAllDigits(pos->second) ) {
-			std::istringstream ss(pos->second);
-			size_t length = 0;
-			ss >> length;
-			if ( ss.fail() )
-				return setError( STATUS_BAD_REQUEST );
-			if ( length > DEFAULT_MAX_BODY )
+			errno = 0;
+			unsigned long ul = std::strtoul(pos->second.c_str(), NULL, 10);
+			if ( errno == ERANGE || ul > std::numeric_limits<size_t>::max())
+				return setError(STATUS_BAD_REQUEST);
+			if ( ul > _maxBodySize )
 				return setError( STATUS_PAYLOAD_TOO_LARGE );
 			_hasContentLength = true;
-			_contentLength = length;
+			_contentLength = static_cast<size_t>(ul);
 		}
 		else
 			return setError( STATUS_BAD_REQUEST );
+	}
+
+	pos = _headers.find("connection");
+	if ( pos != _headers.end() ) {
+		std::vector<std::string> tokens = split(pos->second, ",");
+
+		for (std::vector<std::string>::iterator it = tokens.begin(); it != tokens.end(); it++) {
+			if ( toLower(*it) == "close" ) {
+				_keepAlive = false;
+				break;
+			}
+		}
 	}
 
 	if ( _isChunked && _hasContentLength )
@@ -259,7 +274,6 @@ bool HttpRequest::finishHeaders() {
 	return true;
 }
 
-// conteudo....
 bool HttpRequest::parseBody( std::string & buffer ) {
 	if (_isChunked)
 		return parseBodyChunked( buffer );
@@ -267,7 +281,14 @@ bool HttpRequest::parseBody( std::string & buffer ) {
 }
 
 bool HttpRequest::parseBodyContentLength( std::string & buffer ) {
-	(void)buffer;
+	if ( buffer.size() < _contentLength )
+		return false;
+
+	_body = buffer.substr( 0, _contentLength );
+	buffer.erase( 0, _contentLength );
+
+	_state = REQUEST_COMPLETE;
+
 	return true;
 }
 
@@ -283,16 +304,32 @@ bool HttpRequest::setError( int code ) {
 	return false;
 }
 
-static bool isValidHeaderName( const std::string & s ) {
-	if (s.empty())
-		return false;
-	
-	for (size_t i = 0; i < s.size(); i++) {
-		if (s[i] <= 32 || s[i] >= 127)
-			return false;
-	}
+static bool isTchar(char c)
+{
+    return	( c >= '0' && c <= '9' ) ||
+			( c >= 'A' && c <= 'Z' ) ||
+			( c >= 'a' && c <= 'z' ) ||
+			c == '&' || c == '\'' ||
+			c == '!' || c == '#' ||
+			c == '$' || c == '%' ||
+			c == '*' || c == '+' ||
+			c == '-' || c == '.' ||
+			c == '^' || c == '_' ||
+			c == '`' || c == '|' ||
+			c == '~';
+}
 
-	return true;
+static bool isValidHeaderName(const std::string &s) {
+    if ( s.empty() )
+        return false;
+
+    for ( std::string::size_type i = 0; i < s.size(); ++i )
+    {
+        if ( !isTchar(s[i]) )
+            return false;
+    }
+
+    return true;
 }
 
 static bool isValidHeaderValue( const std::string & s ) {
