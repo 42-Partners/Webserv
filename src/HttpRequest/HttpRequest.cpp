@@ -1,8 +1,22 @@
 #include "HttpRequest/HttpRequest.hpp"
 
-HttpRequest::HttpRequest() : _errorCode(0), _state(PARSING_REQUEST_LINE), _isChunked(false), _hasContentLength(false), _contentLength(0) { }
+HttpRequest::HttpRequest()
+    : _errorCode(0),
+      _state(PARSING_REQUEST_LINE),
+      _isChunked(false),
+      _hasContentLength(false),
+      _contentLength(0),
+      _maxBodySize(DEFAULT_MAX_BODY) {}
 
-HttpRequest::~HttpRequest() { }
+HttpRequest::HttpRequest( size_t maxSize ) 
+    : _errorCode(0),
+      _state(PARSING_REQUEST_LINE),
+      _isChunked(false),
+      _hasContentLength(false),
+      _contentLength(0),
+      _maxBodySize(maxSize) {}
+
+HttpRequest::~HttpRequest() {}
 
 int HttpRequest::getErrorCode() const { return(this->_errorCode); }
 

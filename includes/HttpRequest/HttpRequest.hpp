@@ -18,6 +18,7 @@ class HttpRequest {
 		typedef std::map<std::string, std::string>::const_iterator map_iterator;
 
 		HttpRequest();
+		explicit HttpRequest( size_t );
 		~HttpRequest();
 	
 		void feed( std::string & );
@@ -41,6 +42,7 @@ class HttpRequest {
 		bool _isChunked;
 		bool _hasContentLength;
 		size_t _contentLength;
+		size_t _maxBodySize;
 
 		std::string _method;
 		std::string _uri;
@@ -70,8 +72,7 @@ class HttpRequest {
 		static const size_t MAX_HEADERS_SIZE = 8192;
 		static const size_t MAX_HEADER_COUNT = 100;
 		static const size_t MAX_CHUNK_SIZE_LINE = 32;
-
-		static const size_t DEFAULT_MAX_BODY = 1048576; //adicionar setter para _maxBodySize (vem do serverconfig)
+		static const size_t DEFAULT_MAX_BODY = 1048576;
 };
 
 #endif
