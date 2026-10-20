@@ -11,6 +11,10 @@
 #include <set>
 #include <utility>
 #include <stdexcept>
+#include <sys/poll.h>
+#include <unistd.h>
+#include <errno.h>
+#include <algorithm>
 
 ServerManager::ServerManager(const std::vector<ServerConfig>& configs)
 	: _serverConfigs(configs) {
@@ -47,13 +51,8 @@ void ServerManager::_setupListeningSockets() {
 			if (listenFd < 0) {
 				throw std::runtime_error("Falha ao criar o socket.");
 			}
-			int flags = fcntl(listenFd, F_GETFL, 0);
-			if (flags == -1) {
-				throw std::runtime_error("Fail: error to get flag F_GETFL in file socket.");
-			}
-			flags |= O_NONBLOCK;
-			if (fcntl(listenFd, F_SETFL, flags) == -1) {
-				throw std::runtime_error("Fail: error to define socket how non block.");
+			if (fcntl(listenFd, F_SETFL, O_NONBLOCK) == -1) {
+				throw std::runtime_error("Fail: error to define socket as non block.");
 			}
 			int opt = 1;
 			if (setsockopt(listenFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
@@ -86,9 +85,9 @@ void ServerManager::_setupListeningSockets() {
 			}
 			_listenSockets.push_back(listenFd);
 			boundAddresses.insert(addrPair);
-
-			std::cout << "[ServerManager] Socket em LISTEN: " 
-					<< host << ":" << port << " (FD: " << listenFd << ")" << std::endl;
+			_listenSocketMap[listenFd] = &_serverConfigs[i];
+			// std::cout << "[ServerManager] Socket em LISTEN: " 
+			// 		<< host << ":" << port << " (FD: " << listenFd << ")" << std::endl;
 
 		} catch (const std::exception& e) {
 			if (listenFd >= 0) {
@@ -104,7 +103,174 @@ void ServerManager::run() {
 	_setupListeningSockets();
 
 	std::cout << "\n[OK] Todas as portas foram abertas em LISTEN." << std::endl;
-	std::cout << "[INFO] Pressione ENTER no terminal para encerrar o teste da Tarefa 6..." << std::endl;
+	struct pollfd structPollFds;
+	for (size_t i = 0; i < _listenSockets.size(); ++i) {
+		structPollFds.fd = _listenSockets[i];
+		structPollFds.events = POLLIN;
+		structPollFds.revents = 0;
+		_pollFds.push_back(structPollFds);
+		
+	}
+	_isRunning = true;
+	std::time_t lastTimeoutCheck = std::time(NULL);
+	try{
 
-	std::cin.get();
+		while (_isRunning) {
+			int pollCount = poll(&_pollFds[0], _pollFds.size(), 1000);
+
+            if (pollCount < 0) {
+				std::cout << "[DEBUG] poll falhou. errno = " << errno << " (EINTR é " << EINTR << ")" << std::endl;
+                if (errno == EINTR) continue;
+                throw std::runtime_error("Erro na função poll()\n");
+            }
+            std::time_t now = std::time(NULL);
+            if (now - lastTimeoutCheck >= 1) {
+				std::cout << "time out do servidor, reiniciando" << std::endl;
+                _checkTimeouts();
+                lastTimeoutCheck = now;
+            }
+
+            if (pollCount == 0) {
+                continue;
+            }
+			for (size_t i = 0; i < _pollFds.size(); ++i) {
+			int fd = _pollFds[i].fd;
+			short revents = _pollFds[i].revents;
+
+			if (revents == 0) continue;
+
+			if (_isListeningSocket(fd)) {
+				if (revents & POLLIN) {
+				_acceptNewConnection(fd);
+				}
+			} else {
+				if (revents & (POLLHUP | POLLERR)) {
+					_closeConnection(fd, i);
+				} else if (revents & POLLIN) {
+					//_handleConnectionRead(fd, i);
+				} else if (revents & POLLOUT) {
+				// _handleConnectionWrite(fd, i);
+				}
+			}
+		}
+		}
+
+	} catch (const std::exception& e) {
+		_cleanupListeningSockets();
+		throw;
+	}
+}
+
+void ServerManager::_acceptNewConnection(int listenFd)
+{
+	struct sockaddr_in clientAddr;
+	socklen_t clientAddrLen = sizeof(clientAddr);
+
+	int clientFd = accept(listenFd, (struct sockaddr*)&clientAddr, &clientAddrLen);
+	if (clientFd < 0) {
+		if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			return;
+		}
+		std::cerr << "[Erro] Falha ao executar accept()" << std::endl;
+		return;
+	}
+	char ipBuffer[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &(clientAddr.sin_addr), ipBuffer, INET_ADDRSTRLEN);
+	std::string clientIp(ipBuffer);
+	const ServerConfig config = *_getConfigForListenSocket(listenFd);
+	_connections[clientFd] = new Connection(clientFd, clientIp, &config);
+	std::cout << "[ServerManager] Novo cliente conectado no FD: " << clientFd << std::endl;
+}
+
+void ServerManager::_checkTimeouts() {
+	std::time_t now = std::time(NULL);
+	long timeoutLimit = 60;
+
+	std::map<int, Connection*>::iterator it = _connections.begin();
+	while (it != _connections.end()) {
+		int fd = it->first;
+		Connection* conn = it->second;
+		if (now - conn->getLastActivity() > timeoutLimit) {
+			std::cout << "[ServerManager] Timeout atingido para o cliente FD: " << fd << ". Fechando conexão." << std::endl;
+			size_t pollIndex = _findPollIndex(fd);
+
+			std::map<int, Connection*>::iterator toDelete = it;
+			++it;
+			if (pollIndex != (size_t)-1) {
+				_closeConnection(fd, pollIndex);
+			} else {
+				delete toDelete->second;
+				_connections.erase(toDelete);
+				close(fd);
+			}
+		} else {
+			++it;
+		}
+	}
+}
+
+size_t ServerManager::_findPollIndex(int fd) const {
+	for (size_t i = 0; i < _pollFds.size(); ++i) {
+		if (_pollFds[i].fd == fd) {
+			return i;
+		}
+	}
+	return (size_t)-1; // Retorna um valor inválido se não encontrar
+}
+
+// void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex)
+// {
+
+// }
+// void ServerManager::_handleConnectionWrite(int connectionFd, size_t pollIndex)
+// {
+
+// }
+
+#include <unistd.h>
+
+void ServerManager::_closeConnection(int connectionFd, size_t pollIndex) {
+	std::cout << "[ServerManager] Fechando conexão do FD: " << connectionFd << std::endl;
+	close(connectionFd);
+	std::map<int, Connection*>::iterator it = _connections.find(connectionFd);
+	if (it != _connections.end()) {
+		delete it->second;
+		_connections.erase(it);
+	}
+	if (pollIndex < _pollFds.size()) {
+		_pollFds.erase(_pollFds.begin() + pollIndex);
+	}
+}
+
+bool ServerManager::_isListeningSocket(int fd)
+{
+	std::vector<int>::iterator it = std::find(_listenSockets.begin(), _listenSockets.end(), fd);
+	if (it != _listenSockets.end()) {
+		std::cout << "sim\n";
+		std::cout << "[Debug] Evento POLLIN detectado no listenFd :" << fd << " " << std::endl;
+		return true;
+	} else {
+		return false;
+	}
+}
+// void ServerManager::_closeConnectionConnection(int connectionFd, size_t pollIndex)
+// {
+
+// }
+// void ServerManager::_cleanupListeningSockets()
+// {
+
+// }
+
+const ServerConfig* ServerManager::_getConfigForListenSocket(int listenFd) const {
+	std::map<int, const ServerConfig*>::const_iterator it = _listenSocketMap.find(listenFd);
+	
+	if (it != _listenSocketMap.end()) {
+		return it->second;
+	}
+	if (!_serverConfigs.empty()) {
+		return &_serverConfigs[0];
+	}
+	
+	return NULL;
 }
