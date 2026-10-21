@@ -153,7 +153,8 @@ void ServerManager::run() {
 				} 
 				// Trata escrita
 				if (revents & POLLOUT) {
-					// _handleConnectionWrite(fd, i);
+					std::cout << "entrou aqui POLLOUT" << std::endl;
+					_handleConnectionWrite(fd, i);
 				}
 			}
 		}
@@ -254,11 +255,16 @@ void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
     std::cout << "[ServerManager] Requisição completa lida do FD " << connectionFd << ":\n" << accumulatedData << std::endl;
     
     // parser para HttpRequest
+	// falta desenvolver http response
+	// mudança do events para encerrar requisição
+	_pollFds[pollIndex].events = POLLOUT;
 }
-// void ServerManager::_handleConnectionWrite(int connectionFd, size_t pollIndex)
-// {
 
-// }
+void ServerManager::_handleConnectionWrite(int connectionFd, size_t pollIndex) {
+    // Stub temporário: apenas fecha a conexão para liberar o cliente (ex: o curl) 
+    // e evitar que ele fique travado esperando uma resposta.
+    _closeConnection(connectionFd, pollIndex);
+}
 
 
 void ServerManager::_closeConnection(int connectionFd, size_t pollIndex) {
