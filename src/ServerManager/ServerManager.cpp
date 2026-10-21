@@ -12,7 +12,6 @@
 #include <utility>
 #include <stdexcept>
 #include <sys/poll.h>
-#include <unistd.h>
 #include <errno.h>
 #include <algorithm>
 
@@ -109,7 +108,6 @@ void ServerManager::run() {
 		structPollFds.events = POLLIN;
 		structPollFds.revents = 0;
 		_pollFds.push_back(structPollFds);
-		
 	}
 	_isRunning = true;
 	std::time_t lastTimeoutCheck = std::time(NULL);
@@ -125,7 +123,6 @@ void ServerManager::run() {
             }
             std::time_t now = std::time(NULL);
             if (now - lastTimeoutCheck >= 1) {
-				std::cout << "time out do servidor, reiniciando" << std::endl;
                 _checkTimeouts();
                 lastTimeoutCheck = now;
             }
@@ -141,15 +138,22 @@ void ServerManager::run() {
 
 			if (_isListeningSocket(fd)) {
 				if (revents & POLLIN) {
-				_acceptNewConnection(fd);
+					_acceptNewConnection(fd);
 				}
 			} else {
 				if (revents & (POLLHUP | POLLERR)) {
+					std::cout << "entrou aqui POLLHUP/POLLERR" << std::endl;
 					_closeConnection(fd, i);
-				} else if (revents & POLLIN) {
-					//_handleConnectionRead(fd, i);
-				} else if (revents & POLLOUT) {
-				// _handleConnectionWrite(fd, i);
+					--i;
+					continue;
+				}
+				if (revents & POLLIN) {
+					std::cout << "entrou aqui POLLIN" << std::endl;
+					_handleConnectionRead(fd, i);
+				} 
+				// Trata escrita
+				if (revents & POLLOUT) {
+					// _handleConnectionWrite(fd, i);
 				}
 			}
 		}
@@ -163,23 +167,32 @@ void ServerManager::run() {
 
 void ServerManager::_acceptNewConnection(int listenFd)
 {
-	struct sockaddr_in clientAddr;
-	socklen_t clientAddrLen = sizeof(clientAddr);
-
-	int clientFd = accept(listenFd, (struct sockaddr*)&clientAddr, &clientAddrLen);
-	if (clientFd < 0) {
-		if (errno == EAGAIN || errno == EWOULDBLOCK) {
-			return;
-		}
-		std::cerr << "[Erro] Falha ao executar accept()" << std::endl;
-		return;
-	}
-	char ipBuffer[INET_ADDRSTRLEN];
-	inet_ntop(AF_INET, &(clientAddr.sin_addr), ipBuffer, INET_ADDRSTRLEN);
-	std::string clientIp(ipBuffer);
-	const ServerConfig config = *_getConfigForListenSocket(listenFd);
-	_connections[clientFd] = new Connection(clientFd, clientIp, &config);
-	std::cout << "[ServerManager] Novo cliente conectado no FD: " << clientFd << std::endl;
+    struct sockaddr_in clientAddr;
+    socklen_t clientAddrLen = sizeof(clientAddr);
+    int clientFd = accept(listenFd, (struct sockaddr*)&clientAddr, &clientAddrLen);
+    if (clientFd < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return;
+        }
+        std::cerr << "[Erro] Falha ao executar accept()" << std::endl;
+        return;
+    }
+    if (fcntl(clientFd, F_SETFL, O_NONBLOCK) == -1) {
+        std::cerr << "[Erro] Falha ao aplicar O_NONBLOCK no cliente FD: " << clientFd << std::endl;
+        close(clientFd);
+        return;
+    }
+    char ipBuffer[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(clientAddr.sin_addr), ipBuffer, INET_ADDRSTRLEN);
+    std::string clientIp(ipBuffer);
+    const ServerConfig* config = _getConfigForListenSocket(listenFd);
+    _connections[clientFd] = new Connection(clientFd, clientIp, config);
+    struct pollfd clientPollFd;
+    clientPollFd.fd = clientFd;
+    clientPollFd.events = POLLIN;
+    clientPollFd.revents = 0;
+    _pollFds.push_back(clientPollFd);
+    std::cout << "[ServerManager] Novo cliente conectado no FD: " << clientFd << std::endl;
 }
 
 void ServerManager::_checkTimeouts() {
@@ -193,7 +206,6 @@ void ServerManager::_checkTimeouts() {
 		if (now - conn->getLastActivity() > timeoutLimit) {
 			std::cout << "[ServerManager] Timeout atingido para o cliente FD: " << fd << ". Fechando conexão." << std::endl;
 			size_t pollIndex = _findPollIndex(fd);
-
 			std::map<int, Connection*>::iterator toDelete = it;
 			++it;
 			if (pollIndex != (size_t)-1) {
@@ -215,19 +227,39 @@ size_t ServerManager::_findPollIndex(int fd) const {
 			return i;
 		}
 	}
-	return (size_t)-1; // Retorna um valor inválido se não encontrar
+	return (size_t)-1;
 }
 
-// void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex)
-// {
-
-// }
+void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
+    char buffer[1024];
+    std::string accumulatedData = "";
+    while (true) {
+        ssize_t bytesRead = recv(connectionFd, buffer, sizeof(buffer) - 1, 0);
+        if (bytesRead < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                break;
+            }
+            _closeConnection(connectionFd, pollIndex);
+            return;
+        } 
+        
+        if (bytesRead == 0) {
+            std::cout << "[ServerManager] Cliente fechou a conexão (FD: " << connectionFd << ")" << std::endl;
+            _closeConnection(connectionFd, pollIndex);
+            return;
+        }
+        buffer[bytesRead] = '\0';
+        accumulatedData += buffer;
+    }
+    std::cout << "[ServerManager] Requisição completa lida do FD " << connectionFd << ":\n" << accumulatedData << std::endl;
+    
+    // parser para HttpRequest
+}
 // void ServerManager::_handleConnectionWrite(int connectionFd, size_t pollIndex)
 // {
 
 // }
 
-#include <unistd.h>
 
 void ServerManager::_closeConnection(int connectionFd, size_t pollIndex) {
 	std::cout << "[ServerManager] Fechando conexão do FD: " << connectionFd << std::endl;
@@ -242,16 +274,13 @@ void ServerManager::_closeConnection(int connectionFd, size_t pollIndex) {
 	}
 }
 
-bool ServerManager::_isListeningSocket(int fd)
-{
-	std::vector<int>::iterator it = std::find(_listenSockets.begin(), _listenSockets.end(), fd);
-	if (it != _listenSockets.end()) {
-		std::cout << "sim\n";
-		std::cout << "[Debug] Evento POLLIN detectado no listenFd :" << fd << " " << std::endl;
-		return true;
-	} else {
-		return false;
-	}
+bool ServerManager::_isListeningSocket(int fd) const {
+    for (size_t i = 0; i < _listenSockets.size(); ++i) {
+        if (_listenSockets[i] == fd) {
+            return true;
+        }
+    }
+    return false;
 }
 // void ServerManager::_closeConnectionConnection(int connectionFd, size_t pollIndex)
 // {
