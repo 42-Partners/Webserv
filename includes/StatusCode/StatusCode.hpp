@@ -20,7 +20,4 @@ enum StatusCode {
 	STATUS_VERSION_NOT_SUPPORTED	= 505
 };
 
-std::string reasonPhrase( int );
-std::string defaultErrorPage( int );
-
 #endif

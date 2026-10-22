@@ -26,6 +26,7 @@ SRC			:=	src/main.cpp \
 				src/HttpRequest/HttpRequest.cpp  \
 				src/HttpRequest/RequestParser.cpp  \
 				src/HttpRequest/RequestProcessor.cpp  \
+				src/HttpResponse/ErrorPage.cpp  \
 				src/HttpResponse/HttpResponse.cpp  \
 				src/parser/arg_parser.cpp \
 				src/ServerManager/ServerManager.cpp \
