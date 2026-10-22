@@ -2,6 +2,11 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cerrno>
+#include <cstdlib>
+#include <limits>
+
+static const std::string TCHAR_SYMBOLS = "!#$%&'*+-.^_`|~";
 
 static int safeToLower( int c ) {
     return std::tolower( static_cast<unsigned char>(c) );
@@ -12,7 +17,7 @@ std::string toLower( std::string s ) {
 	return s;
 }
 
-std::string trim( std::string s ) {
+std::string trim( const std::string & s ) {
 	size_t first = s.find_first_not_of(" \t");
 	if ( first == std::string::npos )
 		return "";
@@ -22,23 +27,24 @@ std::string trim( std::string s ) {
 	return s.substr(first, second - first + 1);
 }
 
-std::vector<std::string> split( std::string s, const std::string & delimiter ) {
-	
+std::vector<std::string> split( const std::string & s, const std::string & delimiter ) {
 	std::vector<std::string> res;
 
-	if ( !delimiter.empty() ) {
+	if ( delimiter.empty() ) {
+        res.push_back( s );
+        return res;
+    }
 
-		size_t pos = s.find( delimiter );
+	size_t start = 0;
+	size_t end = s.find( delimiter );
 
-		while ( pos != std::string::npos ) {
-			res.push_back( s.substr(0, pos) );
-			s.erase( 0, pos + delimiter.size() );
-			pos = s.find( delimiter );
-		}
-	}
+	while ( end != std::string::npos ) {
+		res.push_back( s.substr(start, end - start) );
+		start = end + delimiter.size();
+		end = s.find( delimiter, start );
+    }
 
-	res.push_back( s );
-
+	res.push_back( s.substr(start) );
 	return res;
 }
 
@@ -60,19 +66,32 @@ bool isLower( char c ) {
 	return c >= 'a' && c <= 'z'; 
 }
 
-bool isAllDigits( const std::string & s) {
+bool isTchar(char c) {
+    return isDigit(c) || isUpper(c) || isLower(c)
+		|| TCHAR_SYMBOLS.find(c) != std::string::npos;
+}
+
+bool stringToSize( const std::string & s, int base, size_t & n ) {
 	if ( s.empty() )
 		return false;
 
-	for (size_t i = 0; i < s.size(); i++) {
-		if ( !isDigit(s[i]) )
-			return false;
-	}
+	if (s[0] == '-' || s[0] == '+')
+		return false;
+
+	char *endptr;
+	errno = 0;
+	unsigned long ul = std::strtoul(s.c_str(), &endptr, base);
+	if ( errno == ERANGE ||
+		*endptr ||
+		ul > std::numeric_limits<size_t>::max())
+		return false;
+
+	n = static_cast<size_t>(ul);
 
 	return true;
 }
 
-int hexCharToInt( char c ) {
+int charToInt( char c ) {
 	if (c >= 'A' && c <= 'F')
 		return c - 'A' + 10;
 	if (c >= 'a' && c <= 'f')

@@ -2,9 +2,6 @@
 #include "StatusCode/StatusCode.hpp"
 #include "Utils/Utils.hpp"
 
-#include <cerrno>
-#include <cstdlib>
-#include <limits>
 #include <sstream>
 #include <utility>
 
@@ -15,7 +12,12 @@ static const char * const METHODS[] = {"GET", "POST", "DELETE"};
 static bool isValidHeaderName( const std::string & s );
 static bool isValidHeaderValue( const std::string & s );
 
-void HttpRequest::feed( std::string & buffer ) { 
+/*
+consome do buffer só o que processa;
+deixa a sobra para a próxima requisição;
+nunca é chamada depois de REQUEST_COMPLETE ou REQUEST_ERROR.
+*/
+void HttpRequest::feed( std::string & buffer ) {
 
 	while (_state != REQUEST_COMPLETE && _state != REQUEST_ERROR) {
 
@@ -72,6 +74,8 @@ bool HttpRequest::parseRequestLine( std::string & buffer ) {
 }
 
 bool HttpRequest::parseMethod( const std::string & rawMethod ) {
+	if (rawMethod.empty())
+		return setError(STATUS_BAD_REQUEST);
 
 	for ( size_t i = 0; i < sizeof(METHODS) / sizeof(METHODS[0]); i++ ) {
 		if ( rawMethod == METHODS[i] ) {
@@ -81,7 +85,7 @@ bool HttpRequest::parseMethod( const std::string & rawMethod ) {
 	}
 
 	for ( size_t i = 0; i < rawMethod.size(); i++ ) {
-		if ( !isUpper(rawMethod[i]) )
+		if ( !isTchar(rawMethod[i]) )
 			return setError( STATUS_BAD_REQUEST );
 	}
 
@@ -111,8 +115,8 @@ bool HttpRequest::parseUri( const std::string & rawUri ) {
 				!isHexDigit(path[i+1]) ||
 				!isHexDigit(path[i+2]) )
 				return setError( STATUS_BAD_REQUEST );
-			int first = hexCharToInt(path[i+1]);
-			int second = hexCharToInt(path[i+2]);
+			int first = charToInt(path[i+1]);
+			int second = charToInt(path[i+2]);
 			int byte = first * 16 + second;
 			if (byte < 32 || byte >= 127)
 				return setError( STATUS_BAD_REQUEST );
@@ -123,14 +127,32 @@ bool HttpRequest::parseUri( const std::string & rawUri ) {
 			if ( path[i] < 32 || path[i] >= 127 )
 				return setError( STATUS_BAD_REQUEST );
 			decodedPath += path[i];
-		}
+		} 
 	}
+
+	if ( !decodedPath.compare(0, 2, "//") ||
+		 !decodedPath.compare(0, 2, "/\\") )
+		return setError( STATUS_BAD_REQUEST );
 
 	std::vector<std::string> decodedPathParts = split( decodedPath, "/" );
 
 	for (size_t i = 0; i < decodedPathParts.size(); i++) {
 		if ( decodedPathParts[i] == ".." )
-			return setError( STATUS_BAD_REQUEST );
+			return setError( STATUS_FORBIDDEN );
+	}
+
+	for (size_t i = 0; i < query.size(); i++) {
+		if (query[i] == '%') {
+			if (i + 2 >= query.size() ||
+				!isHexDigit(query[i + 1]) ||
+				!isHexDigit(query[i + 2]))
+				return setError(STATUS_BAD_REQUEST);
+	
+			i += 2;
+		}
+		else if (query[i] < 32 || query[i] >= 127) {
+			return setError(STATUS_BAD_REQUEST);
+		}
 	}
 
 	_uri = rawUri;
@@ -203,9 +225,7 @@ bool HttpRequest::parseHeaderLine( const std::string & line ) {
 	if ( !isValidHeaderValue( value ) )
 		return setError( STATUS_BAD_REQUEST );
 
-	std::pair< map_iterator, bool > res;
-
-	res = _headers.insert( std::make_pair(key, value) );
+	std::pair< map_iterator, bool > res = _headers.insert( std::make_pair(key, value) );
 
 	if ( !res.second ) {
 		if (key == "host" ||
@@ -215,15 +235,15 @@ bool HttpRequest::parseHeaderLine( const std::string & line ) {
 			return setError( STATUS_BAD_REQUEST );
 		else {
 			if ( !value.empty() )
-				_headers[key] = _headers[key] + "," + value;
+				res.first->second += "," + value;
 		}
 	}
 
 	return true;
 }
-
+// parsear tranfer-enconding direito -> deixar concatenar e disparar 501
 bool HttpRequest::finishHeaders() {
-	map_iterator pos = _headers.find("host");
+	const_map_iterator pos = _headers.find("host");
 	if ( pos == _headers.end() || pos->second.empty() )
 		return setError( STATUS_BAD_REQUEST );
 	
@@ -237,25 +257,21 @@ bool HttpRequest::finishHeaders() {
 
 	pos = _headers.find("content-length");
 	if ( pos != _headers.end() ) {
-		if ( isAllDigits(pos->second) ) {
-			errno = 0;
-			unsigned long ul = std::strtoul(pos->second.c_str(), NULL, 10);
-			if ( errno == ERANGE || ul > std::numeric_limits<size_t>::max())
+		size_t length = 0;
+		if ( !stringToSize( pos->second, 10, length ) )
 				return setError(STATUS_BAD_REQUEST);
-			if ( ul > _maxBodySize )
+			if ( length > _maxBodySize )
 				return setError( STATUS_PAYLOAD_TOO_LARGE );
 			_hasContentLength = true;
-			_contentLength = static_cast<size_t>(ul);
-		}
-		else
-			return setError( STATUS_BAD_REQUEST );
+			_contentLength = length;
 	}
 
 	pos = _headers.find("connection");
 	if ( pos != _headers.end() ) {
 		std::vector<std::string> tokens = split(pos->second, ",");
 
-		for (std::vector<std::string>::iterator it = tokens.begin(); it != tokens.end(); it++) {
+		for ( std::vector<std::string>::iterator it = tokens.begin();
+			  it != tokens.end(); it++ ) {
 			if ( toLower(*it) == "close" ) {
 				_keepAlive = false;
 				break;
@@ -288,13 +304,94 @@ bool HttpRequest::parseBodyContentLength( std::string & buffer ) {
 	buffer.erase( 0, _contentLength );
 
 	_state = REQUEST_COMPLETE;
-
 	return true;
 }
-
+// validar extensao
 bool HttpRequest::parseBodyChunked( std::string & buffer ) {
-	(void)buffer;
+	if ( buffer.empty() )
+		return false;
+	
+	if ( !isHexDigit( buffer[0] ) )
+		return setError( STATUS_BAD_REQUEST );
 
+	size_t pos = buffer.find( CRLF );
+	if ( pos == std::string::npos ) {
+		if ( buffer.size() > MAX_CHUNK_SIZE_LINE )
+			return setError( STATUS_BAD_REQUEST );
+		return false;
+	}
+
+	if ( pos > MAX_CHUNK_SIZE_LINE )
+		return setError( STATUS_BAD_REQUEST );
+
+	std::string sizeLine = buffer.substr(0, pos);
+	size_t semicolon = sizeLine.find(";");
+
+	std::string sizeStr = sizeLine;
+	if ( semicolon != std::string::npos )
+		sizeStr = trim(sizeLine.substr(0, semicolon));
+
+	size_t size = 0;
+	if ( !stringToSize( sizeStr, 16, size ) )
+		return setError( STATUS_BAD_REQUEST );
+
+	if ( _body.size() > _maxBodySize ||
+		 _maxBodySize - _body.size() < size )
+		return setError( STATUS_PAYLOAD_TOO_LARGE );
+	
+	if ( size > 0 ) {
+		std::string chunk = buffer.substr( pos + 2 );
+
+		if ( chunk.size() < size ||
+			 chunk.size() - size < 2 )
+			return false;
+		
+		if ( chunk.compare(size, 2, CRLF) )
+			return setError( STATUS_BAD_REQUEST );
+		
+		_body += buffer.substr( pos + 2, size );
+		buffer.erase( 0, (pos + 2) + size + 2 );
+
+		return true;
+	}
+
+	return finishBodyChunked( buffer );
+}
+
+bool HttpRequest::finishBodyChunked( std::string & buffer ) {
+	std::string sizeLine = "0\r\n";
+
+	size_t pos = buffer.find(HEADERS_END);
+	if ( pos == std::string::npos ) {
+		if ( MAX_HEADERS_SIZE < buffer.size() - sizeLine.size() )
+			return setError( STATUS_HEADERS_TOO_LARGE );
+		return false;
+	}
+
+	if ( pos > 3 && pos - sizeLine.size() > MAX_HEADERS_SIZE )
+		return setError( STATUS_HEADERS_TOO_LARGE );
+	
+	std::vector<std::string> trailers = split( buffer.substr(0, pos), CRLF );
+	
+	for ( size_t i = 1; i < trailers.size(); i++ ) {
+		size_t dots = trailers[i].find(':');
+		if ( dots == std::string::npos )
+			return setError( STATUS_BAD_REQUEST );
+		std::string name = toLower( trailers[i].substr(0, dots) );
+		if ( !isValidHeaderName(name) )
+			return setError( STATUS_BAD_REQUEST );
+
+		if ( name == "content-length" ||
+			 name == "transfer-encoding" )
+			return setError( STATUS_BAD_REQUEST );
+		
+		if ( !isValidHeaderValue(trailers[i].substr(dots + 1)) )
+			return setError( STATUS_BAD_REQUEST );
+	}
+
+	buffer.erase( 0, pos + HEADERS_END.size() );
+
+	_state = REQUEST_COMPLETE;
 	return true;
 }
 
@@ -304,32 +401,17 @@ bool HttpRequest::setError( int code ) {
 	return false;
 }
 
-static bool isTchar(char c)
-{
-    return	( c >= '0' && c <= '9' ) ||
-			( c >= 'A' && c <= 'Z' ) ||
-			( c >= 'a' && c <= 'z' ) ||
-			c == '&' || c == '\'' ||
-			c == '!' || c == '#' ||
-			c == '$' || c == '%' ||
-			c == '*' || c == '+' ||
-			c == '-' || c == '.' ||
-			c == '^' || c == '_' ||
-			c == '`' || c == '|' ||
-			c == '~';
-}
-
 static bool isValidHeaderName(const std::string &s) {
-    if ( s.empty() )
-        return false;
+	if ( s.empty() )
+		return false;
 
-    for ( std::string::size_type i = 0; i < s.size(); ++i )
-    {
-        if ( !isTchar(s[i]) )
-            return false;
-    }
+	for ( std::string::size_type i = 0; i < s.size(); ++i )
+	{
+		if ( !isTchar(s[i]) )
+			return false;
+	}
 
-    return true;
+	return true;
 }
 
 static bool isValidHeaderValue( const std::string & s ) {

@@ -15,7 +15,8 @@ class HttpRequest {
 			REQUEST_ERROR
 		};
 
-		typedef std::map<std::string, std::string>::const_iterator map_iterator;
+		typedef std::map<std::string, std::string>::iterator map_iterator;
+		typedef std::map<std::string, std::string>::const_iterator const_map_iterator;
 
 		HttpRequest();
 		explicit HttpRequest( size_t );
@@ -38,10 +39,13 @@ class HttpRequest {
 
 	private:
 		int _errorCode;
+
 		ParsingState _state;
+
 		bool _keepAlive;
 		bool _isChunked;
 		bool _hasContentLength;
+
 		size_t _contentLength;
 		size_t _maxBodySize;
 
@@ -66,6 +70,7 @@ class HttpRequest {
 		bool parseBody( std::string & );
 		bool parseBodyContentLength( std::string &  );
 		bool parseBodyChunked( std::string & );
+		bool finishBodyChunked(std::string & );
 
 		bool setError( int );
 
