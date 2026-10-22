@@ -25,7 +25,7 @@ private:
 	void _handleConnectionWrite(int connectionFd, size_t pollIndex);
 	void _closeConnection(int connectionFd, size_t pollIndex);
 	void _checkTimeouts();
-	bool _isListeningSocket(int fd);
+	bool _isListeningSocket(int fd) const;
 	void _closeConnectionConnection(int connectionFd, size_t pollIndex);
 	void _cleanupListeningSockets();
 	size_t _findPollIndex(int fd) const;
