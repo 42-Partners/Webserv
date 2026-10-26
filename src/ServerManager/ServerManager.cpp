@@ -253,7 +253,6 @@ void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
         accumulatedData += buffer;
     }
     std::cout << "[ServerManager] Requisição completa lida do FD " << connectionFd << ":\n" << accumulatedData << std::endl;
-    
     // parser para HttpRequest
 	// falta desenvolver http response
 	// mudança do events para encerrar requisição
