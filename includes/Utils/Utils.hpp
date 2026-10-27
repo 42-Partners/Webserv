@@ -14,7 +14,9 @@ bool isHexDigit( char );
 bool isUpper( char );
 bool isLower( char );
 bool isTchar(char c);
+bool isToken( const std::string & );
 bool stringToSize( const std::string &, int, size_t & );
+bool hasControlChars( const std::string & );
 
 int charToInt( char );
 

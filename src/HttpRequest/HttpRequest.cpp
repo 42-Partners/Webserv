@@ -24,6 +24,8 @@ int HttpRequest::getErrorCode() const { return(this->_errorCode); }
 
 HttpRequest::ParsingState HttpRequest::getState() const { return(this->_state); }
 
+bool HttpRequest::getKeepAlive() const { return (this->_keepAlive); }
+
 const std::string& HttpRequest::getMethod() const { return (this->_method); }
 
 const std::string& HttpRequest::getUri() const { return(this->_uri); }

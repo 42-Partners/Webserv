@@ -11,6 +11,7 @@ class HttpRequest {
 			PARSING_REQUEST_LINE,
 			PARSING_HEADERS,
 			PARSING_BODY,
+			CHUNK_TRAILERS,
 			REQUEST_COMPLETE,
 			REQUEST_ERROR
 		};
@@ -26,6 +27,7 @@ class HttpRequest {
 
 		int getErrorCode() const;
 		ParsingState getState() const;
+		bool getKeepAlive() const;
 		const std::string& getMethod() const;
 		const std::string& getUri() const;
 		const std::string& getPath() const;
@@ -70,7 +72,7 @@ class HttpRequest {
 		bool parseBody( std::string & );
 		bool parseBodyContentLength( std::string &  );
 		bool parseBodyChunked( std::string & );
-		bool finishBodyChunked(std::string & );
+		bool parseTrailers(std::string & );
 
 		bool setError( int );
 

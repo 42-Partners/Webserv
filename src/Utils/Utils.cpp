@@ -71,24 +71,55 @@ bool isTchar(char c) {
 		|| TCHAR_SYMBOLS.find(c) != std::string::npos;
 }
 
-bool stringToSize( const std::string & s, int base, size_t & n ) {
-	if ( s.empty() )
+bool isToken( const std::string & s ) {
+	if (s.empty())
 		return false;
-
-	if (s[0] == '-' || s[0] == '+')
-		return false;
-
-	char *endptr;
-	errno = 0;
-	unsigned long ul = std::strtoul(s.c_str(), &endptr, base);
-	if ( errno == ERANGE ||
-		*endptr ||
-		ul > std::numeric_limits<size_t>::max())
-		return false;
-
-	n = static_cast<size_t>(ul);
-
+		
+	for ( size_t i = 0; i < s.size(); i++ ) {
+		if ( !isTchar(s[i]) )
+			return false;
+	}
 	return true;
+}
+
+bool stringToSize( const std::string & s, int base, size_t & n ) {
+	if ( s.empty() || ( base != 10 && base != 16 ) )
+		return false;
+
+	size_t result = 0;
+	for ( size_t i = 0; i < s.size(); i++ ) {
+		char c = s[i];
+		int digit;
+
+		if ( c >= '0' && c <= '9' )
+			digit = c - '0';
+		else if ( c >= 'a' && c <= 'f' )
+			digit = c - 'a' + 10;
+		else if ( c >= 'A' && c <= 'F' )
+			digit = c - 'A' + 10;
+		else
+			return false;
+
+		if ( digit >= base )
+			return false;
+		if ( result > ( std::numeric_limits<size_t>::max() - digit ) / base )
+			return false;
+
+		result = result * base + digit;
+	}
+
+	n = result;
+	return true;
+}
+
+bool hasControlChars( const std::string & s ) {
+	for ( size_t i = 0; i < s.size(); i++ ) {
+		unsigned char c = s[i];
+		if ( (c < ' ' && c != '\t') || c >= 127 )
+			return true;
+	}
+
+	return false;
 }
 
 int charToInt( char c ) {
