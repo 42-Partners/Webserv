@@ -2,33 +2,31 @@
 #include "StatusCode/StatusCode.hpp"
 #include "Utils/Utils.hpp"
 
+#include <sstream>
+#include <utility>
+
 static const std::string CRLF = "\r\n";
+static const std::string HEADERS_END = "\r\n\r\n";
 static const char * const METHODS[] = {"GET", "POST", "DELETE"};
 
-/*
-400 Bad Request ->	linha de requisição malformada, header sem :, Content-Length inválido, chunk com tamanho inválido, Host ausente em HTTP/1.1
-413 Content Too Large -> body maior que o client_max_body_size
-414 URI Too Long -> linha de requisição acima do limite
-431 Request Header Fields Too Large -> bloco de headers acima do limite
-501 Not Implemented -> método que você não conhece (PATCH, FOO...)
-505 HTTP Version Not Supported -> versão diferente de 1.0 e 1.1
-411 Length Required -> POST sem Content-Length e sem chunked.
-*/
+static bool isValidHeaderValue( const std::string & s );
+static bool isValidHost( const std::string & s );
 
-// POST /upload/foto.png?user=ana HTTP/1.1\r\nHost: localhost:8080\r\nContent-Type: image/png\r\nContent-Length: 12\r\n\r\nconteudo....
-
-void HttpRequest::feed( std::string & buffer ) { 
+// consome do buffer só o que processa e deixa a sobra para a próxima requisição;
+void HttpRequest::feed( std::string & buffer ) {
 
 	while (_state != REQUEST_COMPLETE && _state != REQUEST_ERROR) {
 
 		bool advanced = false;
 
-		if (_state == PARSING_REQUEST_LINE)
-			advanced = parseRequestLine(buffer);
-		// else if (_state == PARSING_HEADERS)
-		// 	advanced = parseHeaders(buffer);
-		// else if (_state == PARSING_BODY)
-		// 	advanced = parseBody(buffer);
+		if ( _state == PARSING_REQUEST_LINE )
+			advanced = parseRequestLine( buffer );
+		else if ( _state == PARSING_HEADERS )
+			advanced = parseHeaders(buffer);
+		else if ( _state == PARSING_BODY )
+			advanced = parseBody( buffer );
+		else if ( _state == CHUNK_TRAILERS )
+			advanced = parseTrailers( buffer );
 		if (!advanced)
 			break;
 	}
@@ -64,9 +62,9 @@ bool HttpRequest::parseRequestLine( std::string & buffer ) {
 			return setError(STATUS_BAD_REQUEST);
 	}
 
-	if (!parseMethod( requestParts[0] )
-	 || !parseUri( requestParts[1] )
-	 || !parseVersion( requestParts[2] ))
+	if (!parseMethod( requestParts[0] ) ||
+		!parseUri( requestParts[1] ) ||
+		!parseVersion( requestParts[2] ))
 		return false;
 
 	_state = PARSING_HEADERS;
@@ -74,6 +72,8 @@ bool HttpRequest::parseRequestLine( std::string & buffer ) {
 }
 
 bool HttpRequest::parseMethod( const std::string & rawMethod ) {
+	if (rawMethod.empty())
+		return setError(STATUS_BAD_REQUEST);
 
 	for ( size_t i = 0; i < sizeof(METHODS) / sizeof(METHODS[0]); i++ ) {
 		if ( rawMethod == METHODS[i] ) {
@@ -83,7 +83,7 @@ bool HttpRequest::parseMethod( const std::string & rawMethod ) {
 	}
 
 	for ( size_t i = 0; i < rawMethod.size(); i++ ) {
-		if ( !isUpper(rawMethod[i]) )
+		if ( !isTchar(rawMethod[i]) )
 			return setError( STATUS_BAD_REQUEST );
 	}
 
@@ -91,7 +91,7 @@ bool HttpRequest::parseMethod( const std::string & rawMethod ) {
 }
 
 bool HttpRequest::parseUri( const std::string & rawUri ) {
-	if (rawUri[0] != '/')
+	if ( rawUri.empty() || rawUri[0] != '/')
 		return setError( STATUS_BAD_REQUEST );
 
 	size_t pos = rawUri.find('?');
@@ -108,11 +108,14 @@ bool HttpRequest::parseUri( const std::string & rawUri ) {
 
 	std::string decodedPath;
 	for (size_t i = 0; i < path.size(); i++) {
-		if (path[i] == '%') {
-			if ( i + 2 >= path.size() || !isHexDigit(path[i+1]) || !isHexDigit(path[i+2]) )
-					return setError( STATUS_BAD_REQUEST );
-			int first = hexCharToInt(path[i+1]);
-			int second = hexCharToInt(path[i+2]);
+		unsigned char c = path[i];
+		if (c == '%') {
+			if ( i + 2 >= path.size() ||
+				!isHexDigit(path[i+1]) ||
+				!isHexDigit(path[i+2]) )
+				return setError( STATUS_BAD_REQUEST );
+			int first = charToInt(path[i+1]);
+			int second = charToInt(path[i+2]);
 			int byte = first * 16 + second;
 			if (byte < 32 || byte >= 127)
 				return setError( STATUS_BAD_REQUEST );
@@ -120,17 +123,36 @@ bool HttpRequest::parseUri( const std::string & rawUri ) {
 			i += 2;
 		}
 		else {
-			if ( path[i] < 32 || path[i] >= 127 )
+			if ( c < 32 || c >= 127 )
 				return setError( STATUS_BAD_REQUEST );
-			decodedPath += path[i];
-		}
+			decodedPath += c;
+		} 
 	}
+
+	if ( !decodedPath.compare(0, 2, "//") ||
+		 !decodedPath.compare(0, 2, "/\\") )
+		return setError( STATUS_BAD_REQUEST );
 
 	std::vector<std::string> decodedPathParts = split( decodedPath, "/" );
 
 	for (size_t i = 0; i < decodedPathParts.size(); i++) {
 		if ( decodedPathParts[i] == ".." )
-			return setError( STATUS_BAD_REQUEST );
+			return setError( STATUS_FORBIDDEN );
+	}
+
+	for (size_t i = 0; i < query.size(); i++) {
+		unsigned char c = query[i];
+		if (c == '%') {
+			if (i + 2 >= query.size() ||
+				!isHexDigit(query[i + 1]) ||
+				!isHexDigit(query[i + 2]))
+				return setError(STATUS_BAD_REQUEST);
+	
+			i += 2;
+		}
+		else if (c < 32 || c >= 127) {
+			return setError(STATUS_BAD_REQUEST);
+		}
 	}
 
 	_uri = rawUri;
@@ -142,15 +164,15 @@ bool HttpRequest::parseUri( const std::string & rawUri ) {
 
 bool HttpRequest::parseVersion( const std::string & rawVersion ) {
 
-	if (rawVersion == "HTTP/1.0" || rawVersion == "HTTP/1.1") {
+	if ( rawVersion == "HTTP/1.1" ) {
 		_httpVersion = rawVersion;
 		return true;
 	}
 
-	if (rawVersion.size() != 8)
+	if ( rawVersion.size() != 8 )
 		return setError( STATUS_BAD_REQUEST );
 
-	if (rawVersion.compare(0, 5, "HTTP/"))
+	if ( rawVersion.compare(0, 5, "HTTP/") )
 		return setError( STATUS_BAD_REQUEST );
 
 	if ( !isDigit(rawVersion[5]) || rawVersion[6] != '.' || !isDigit(rawVersion[7]) )
@@ -158,23 +180,137 @@ bool HttpRequest::parseVersion( const std::string & rawVersion ) {
 
 	return setError( STATUS_VERSION_NOT_SUPPORTED );
 }
-// Host: localhost:8080\r\nContent-Type: image/png -> procura o fim do bloco (\r\n\r\n). Se achou, consome o bloco e interpreta linha a linha.
-bool HttpRequest::parseHeaders( std::string & buffer ) {
-	(void)buffer;
 
-	return true;
+bool HttpRequest::parseHeaders( std::string & buffer ) {
+	size_t pos = buffer.find(CRLF);
+	if ( !pos ) {
+		buffer.erase(0, CRLF.size());
+		return finishHeaders();
+	}
+	
+	pos = buffer.find(HEADERS_END);
+	if (pos == std::string::npos) {
+		if (buffer.size() >= MAX_HEADERS_SIZE)
+			return setError(STATUS_HEADERS_TOO_LARGE);
+		return false;
+	}
+
+	if (pos >= MAX_HEADERS_SIZE)
+		return setError(STATUS_HEADERS_TOO_LARGE);
+
+	std::vector<std::string> headerLines = split( buffer.substr(0, pos), CRLF );
+	if ( headerLines.size() > MAX_HEADER_COUNT )
+		return setError(STATUS_HEADERS_TOO_LARGE);
+
+	for (size_t i = 0; i < headerLines.size(); i++) {
+		if (!parseHeaderLine( headerLines[i] ))
+			return false;
+	}
+
+	buffer.erase(0, pos + HEADERS_END.size());
+
+	return finishHeaders();
 }
-// Host: localhost:8080
+
 bool HttpRequest::parseHeaderLine( const std::string & line ) {
-	(void)line;
+	size_t pos = line.find(':');
+	if ( pos == std::string::npos )
+		return setError( STATUS_BAD_REQUEST );
+
+	std::string key = toLower(line.substr(0, pos));
+	if ( !isToken( key ) )
+		return setError( STATUS_BAD_REQUEST );
+
+	std::string value = trim(line.substr(pos + 1));
+	if ( !isValidHeaderValue( value ) )
+		return setError( STATUS_BAD_REQUEST );
+
+	std::pair< map_iterator, bool > res = _headers.insert( std::make_pair(key, value) );
+
+	if ( !res.second ) {
+		if (key == "host" ||
+			key == "content-length" ||
+			key == "transfer-encoding" ||
+			key == "content-type")
+			return setError( STATUS_BAD_REQUEST );
+		else {
+			if ( res.first->second.empty() )
+				res.first->second = value;
+			else if ( !value.empty() )
+				res.first->second += "," + value;
+		}
+	}
 
 	return true;
 }
 
 bool HttpRequest::finishHeaders() {
+	const_map_iterator pos = _headers.find("host");
+	if ( pos == _headers.end() || !isValidHost( pos->second ) )
+		return setError( STATUS_BAD_REQUEST );
+
+	pos = _headers.find("content-length");
+	if ( pos != _headers.end() ) {
+		size_t length = 0;
+		if ( !stringToSize( pos->second, 10, length ) )
+			return setError(STATUS_BAD_REQUEST);
+		if ( length > _maxBodySize )
+			return setError( STATUS_PAYLOAD_TOO_LARGE );
+		_hasContentLength = true;
+		_contentLength = length;
+	}
+
+	pos = _headers.find("transfer-encoding");
+	if ( pos != _headers.end() ) {
+		std::vector<std::string> tokens = split(pos->second, ",");
+		size_t size = tokens.size();
+		if ( tokens.empty() )
+			return setError( STATUS_BAD_REQUEST );
+		if ( size > 1 ) {
+			for ( size_t i = 0; i < size; i++ ) {
+				if ( !isToken( trim(tokens[i]) ) )
+					return setError( STATUS_BAD_REQUEST );
+			}
+			for ( size_t i = 0; i < size - 1; i++ ) {
+				if ( trim(toLower(tokens[i])) == "chunked" )
+					return setError( STATUS_BAD_REQUEST );
+			}
+			return setError( STATUS_NOT_IMPLEMENTED );
+		}
+		if ( size == 1 ) {
+			if ( !isToken( trim(tokens[0]) ) )
+				return setError( STATUS_BAD_REQUEST );
+			if ( trim(toLower(tokens[0])) != "chunked" )
+				return setError( STATUS_NOT_IMPLEMENTED );
+			else
+				_isChunked = true;
+		}
+	}
+
+	pos = _headers.find("connection");
+	if ( pos != _headers.end() ) {
+		std::vector<std::string> tokens = split(pos->second, ",");
+
+		for ( std::vector<std::string>::iterator it = tokens.begin();
+			  it != tokens.end(); it++ ) {
+			if ( trim(toLower(*it)) == "close" ) {
+				_keepAlive = false;
+				break;
+			}
+		}
+	}
+
+	if ( _isChunked && _hasContentLength )
+		return setError( STATUS_BAD_REQUEST );
+
+	if ( _isChunked || (_hasContentLength && _contentLength > 0) )
+		_state = PARSING_BODY;
+	else
+		_state = REQUEST_COMPLETE;
+
 	return true;
 }
-// conteudo....
+
 bool HttpRequest::parseBody( std::string & buffer ) {
 	if (_isChunked)
 		return parseBodyChunked( buffer );
@@ -182,13 +318,107 @@ bool HttpRequest::parseBody( std::string & buffer ) {
 }
 
 bool HttpRequest::parseBodyContentLength( std::string & buffer ) {
-	(void)buffer;
+	if ( buffer.size() < _contentLength )
+		return false;
+
+	_body = buffer.substr( 0, _contentLength );
+	buffer.erase( 0, _contentLength );
+
+	_state = REQUEST_COMPLETE;
 	return true;
 }
 
 bool HttpRequest::parseBodyChunked( std::string & buffer ) {
-	(void)buffer;
+	if ( buffer.empty() )
+		return false;
+	
+	if ( !isHexDigit( buffer[0] ) )
+		return setError( STATUS_BAD_REQUEST );
 
+	size_t pos = buffer.find( CRLF );
+	if ( pos == std::string::npos ) {
+		if ( buffer.size() > MAX_CHUNK_SIZE_LINE )
+			return setError( STATUS_BAD_REQUEST );
+		return false;
+	}
+
+	if ( pos > MAX_CHUNK_SIZE_LINE )
+		return setError( STATUS_BAD_REQUEST );
+
+	std::string sizeLine = buffer.substr(0, pos);
+	if ( hasControlChars( sizeLine ) )
+		return setError( STATUS_BAD_REQUEST );
+
+	std::string sizeStr = sizeLine;
+	size_t semicolon = sizeLine.find(";");
+	if ( semicolon != std::string::npos )
+		sizeStr = trim(sizeLine.substr(0, semicolon));
+
+	size_t size = 0;
+	if ( !stringToSize( sizeStr, 16, size ) )
+		return setError( STATUS_BAD_REQUEST );
+
+	if ( _body.size() > _maxBodySize ||
+		 _maxBodySize - _body.size() < size )
+		return setError( STATUS_PAYLOAD_TOO_LARGE );
+	
+	if ( size > 0 ) {
+		size_t start = pos + 2;
+
+		if ( buffer.size() - start < size + 2 )
+			return false;
+		
+		if ( buffer.compare(start + size, 2, CRLF) )
+			return setError( STATUS_BAD_REQUEST );
+		
+		_body.append( buffer, start, size );
+		buffer.erase( 0, start + size + 2 );
+
+		return true;
+	}
+
+	buffer.erase( 0, pos + 2 );
+	_state = CHUNK_TRAILERS;
+	return parseTrailers( buffer );
+}
+
+bool HttpRequest::parseTrailers( std::string & buffer ) {
+	if ( buffer.size() >= 2 && buffer.compare( 0, 2, CRLF ) == 0 ) {
+        buffer.erase( 0, 2 );
+        _state = REQUEST_COMPLETE;
+        return true;
+    }
+
+	size_t pos = buffer.find( HEADERS_END );
+	if ( pos == std::string::npos ) {
+		if ( buffer.size() > MAX_HEADERS_SIZE )
+			return setError( STATUS_HEADERS_TOO_LARGE );
+		return false;
+	}
+
+	if ( pos > MAX_HEADERS_SIZE )
+		return setError( STATUS_HEADERS_TOO_LARGE );
+	
+	std::vector<std::string> trailers = split( buffer.substr(0, pos), CRLF );
+	
+	for ( size_t i = 0; i < trailers.size(); i++ ) {
+		size_t dots = trailers[i].find(':');
+		if ( dots == std::string::npos )
+			return setError( STATUS_BAD_REQUEST );
+		std::string name = toLower( trailers[i].substr(0, dots) );
+		if ( !isToken(name) )
+			return setError( STATUS_BAD_REQUEST );
+
+		if ( name == "content-length" ||
+			 name == "transfer-encoding" )
+			return setError( STATUS_BAD_REQUEST );
+		
+		if ( !isValidHeaderValue(trailers[i].substr(dots + 1)) )
+			return setError( STATUS_BAD_REQUEST );
+	}
+
+	buffer.erase( 0, pos + HEADERS_END.size() );
+	_state = REQUEST_COMPLETE;
 	return true;
 }
 
@@ -198,3 +428,26 @@ bool HttpRequest::setError( int code ) {
 	return false;
 }
 
+static bool isValidHeaderValue( const std::string & s ) {
+	for (size_t i = 0; i < s.size(); i++) {
+		unsigned char c = s[i];
+		if ( (c < 32 && c != 9) || c >= 127 )
+			return false;
+	}
+
+	return true;
+}
+
+static bool isValidHost( const std::string & s ) {
+	if ( s.empty() )
+		return false;
+	
+	for ( size_t i = 0; i < s.size(); i++ ) {
+		unsigned char c = s[i];
+		if ( !( isDigit( c ) || isUpper( c ) || isLower( c ) ||
+				c == '-' || c == '.' || c == '_' ||
+				c == ':' || c == '[' || c == ']' ) )
+			return false;
+	}
+	return true;
+}

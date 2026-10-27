@@ -22,13 +22,16 @@ SRC			:=	src/main.cpp \
 				src/config/Tokenizer.cpp \
 				src/config/LocationConfig.cpp \
 				src/config/ServerConfig.cpp \
-				src/HttpRequest/HttpRequest.cpp  \
-				src/ServerManager/ServerManager.cpp \
+        src/ServerManager/ServerManager.cpp \
 				src/Connection/Connection.cpp \
-				src/HttpResponse/HttpResponse.cpp  \
-				src/parser/arg_parser.cpp \
+				src/HttpRequest/HttpRequest.cpp  \
 				src/HttpRequest/RequestParser.cpp  \
 				src/HttpRequest/RequestProcessor.cpp  \
+        src/HttpRequest/RequestParser.cpp  \
+				src/HttpRequest/RequestProcessor.cpp  \
+				src/HttpResponse/ErrorPage.cpp  \
+				src/HttpResponse/HttpResponse.cpp  \
+				src/parser/arg_parser.cpp \
 				src/StatusCode/StatusCode.cpp \
 				src/Utils/Utils.cpp
 
