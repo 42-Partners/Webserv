@@ -40,6 +40,10 @@ const std::string& HttpRequest::getBody() const { return(this->_body); }
 
 const std::map<std::string, std::string>& HttpRequest::getHeaders() const { return(this->_headers); }
 
+size_t HttpRequest::getContentLength() const { return (this->_contentLength); }
+
+bool HttpRequest::isChunked() const { return (this->_isChunked); }
+
 std::string HttpRequest::getHeader(const std::string& key) const
 {
 	const_map_iterator it = this->_headers.find(key);
