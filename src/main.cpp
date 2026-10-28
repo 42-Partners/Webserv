@@ -53,19 +53,18 @@ std::vector<ServerConfig> createMockConfigs() {
 }
 
 int main() {
-    testUpload();
-    // try {
-    //     std::cout << "[INFO] Iniciando o ServerManager com mock de configuracoes..." << std::endl;
+    try {
+        std::cout << "[INFO] Iniciando o ServerManager com mock de configuracoes..." << std::endl;
 
-    //     std::vector<ServerConfig> configs = createMockConfigs();
-    //     ServerManager manager(configs);
+        std::vector<ServerConfig> configs = createMockConfigs();
+        ServerManager manager(configs);
 
-    //     manager.run();
+        manager.run();
 
-    // } catch (const std::exception& e) {
-    //     std::cerr << "[ERRO] Excecao capturada no main: " << e.what() << std::endl;
-    //     return 1;
-    // }
+    } catch (const std::exception& e) {
+        std::cerr << "[ERRO] Excecao capturada no main: " << e.what() << std::endl;
+        return 1;
+    }
 
     return 0;
 }

@@ -8,8 +8,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-void testUpload(); //teste isolado
-
 HttpResponse handlePost(const HttpRequest &req, const LocationConfig &loc);
 
 bool parseMultipart(const std::string& body, const std::string& boundary, const std::string& uploadStore);
