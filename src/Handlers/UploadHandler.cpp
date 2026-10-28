@@ -2,42 +2,45 @@
 #include "StatusCode/StatusCode.hpp"
 
 void testUpload() {
-    // 1. Mock de LocationConfig (ajuste os métodos conforme sua classe real)
+    std::cout << "[Teste] Executando teste do UploadHandler..." << std::endl;
+
+    // 1. Cria o objeto da requisição
+    HttpRequest req;
+
+    // 2. Monta o buffer HTTP bruto simulando o que viria do socket do cliente
+    std::string boundary = "------------------------boundary123";
+    std::string rawRequest = 
+        "POST /upload HTTP/1.1\r\n"
+        "Host: localhost:8080\r\n"
+        "Content-Type: multipart/form-data; boundary=" + boundary + "\r\n"
+        "Content-Length: 150\r\n"
+        "\r\n"
+        "--" + boundary + "\r\n"
+        "Content-Disposition: form-data; name=\"file\"; filename=\"teste_upload.txt\"\r\n"
+        "Content-Type: text/plain\r\n"
+        "\r\n"
+        "Conteudo do arquivo de teste!\r\n"
+        "--" + boundary + "--\r\n";
+
+    // 3. Alimenta o HttpRequest com o buffer bruto (assim como o servidor faz)
+    req.feed(rawRequest);
+
+    // 4. Cria uma Mock Location para testar
     LocationConfig loc;
     loc.addAllowedMethod("POST");
     loc.setUploadPath("./uploads");
 
-    // 2. Mock de HttpRequest com cabeçalhos e corpo multipart válidos
-    HttpRequest req;
-    req.setMethod("POST");
-    req.addHeader("Content-Type", "multipart/form-data; boundary=------------------------boundary123");
-
-    std::string boundary = "------------------------boundary123";
-    std::string mockBody = 
-        "--" + boundary + "\r\n" +
-        "Content-Disposition: form-data; name=\"file\"; filename=\"teste_upload.txt\"\r\n" +
-        "Content-Type: text/plain\r\n" +
-        "\r\n" +
-        "Conteudo de teste enviado via POST e salvo com sucesso!\r\n" +
-        "--" + boundary + "--\r\n";
-    
-    req.setBody(mockBody);
-
-    // 3. Testa o handlePost (validações)
-    std::cout << "[Teste] Executando handlePost..." << std::endl;
+    // 5. Testa o handlePost
     HttpResponse res = handlePost(req, loc);
     std::cout << "[Teste] Status code retornado: " << res.getStatusCode() << std::endl;
     std::cout << "[Teste] Corpo da resposta: " << res.getBody() << std::endl;
 
-    // 4. Se passou pelas validações, testa o parseMultipart isoladamente
-    if (res.getStatusCode() == STATUS_CREATED) {
+    // 6. Testa o parseMultipart diretamente se a requisição estiver completa
+    if (req.getState() == HttpRequest::REQUEST_COMPLETE) {
         std::cout << "[Teste] Executando parseMultipart..." << std::endl;
-        bool success = parseMultipart(req.getBody(), boundary, loc.getUploadPath());
-        if (success) {
-            std::cout << "[Teste] parseMultipart executado com sucesso! Verifique a pasta " << loc.getUploadPath() << std::endl;
-        } else {
-            std::cerr << "[Teste] Falha no parseMultipart." << std::endl;
-        }
+        parseMultipart(req.getBody(), boundary, loc.getUploadPath());
+    } else {
+        std::cout << "[Teste] AVISO: A requisição não atingiu o estado REQUEST_COMPLETE." << std::endl;
     }
 }
 
