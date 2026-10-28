@@ -63,3 +63,10 @@ void LocationConfig::setRedirect(int code, const std::string& url) { this->_redi
 void LocationConfig::addAllowedMethod(const std::string& method) {
     this->_allowedMethods.push_back(method);
 }
+
+bool LocationConfig::isMethodAllowed(const std::string& method) const {
+    for (size_t i = 0; i < this->_allowedMethods.size(); i++) {
+        if (this->_allowedMethods[i] == method) return true;
+    }
+    return false;
+}

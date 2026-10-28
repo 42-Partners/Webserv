@@ -29,6 +29,7 @@ SRC			:=	src/main.cpp \
 				src/parser/arg_parser.cpp \
 				src/HttpRequest/RequestParser.cpp  \
 				src/HttpRequest/RequestProcessor.cpp  \
+				src/Handlers/UploadHandler.cpp  \
 				src/StatusCode/StatusCode.cpp \
 				src/Utils/Utils.cpp
 

@@ -3,6 +3,7 @@
 #include "config/LocationConfig.hpp"
 #include <iostream>
 #include <vector>
+#include "Handlers/UploadHandler.hpp"
 
 std::vector<ServerConfig> createMockConfigs() {
     std::vector<ServerConfig> configs;
@@ -52,6 +53,7 @@ std::vector<ServerConfig> createMockConfigs() {
 }
 
 int main() {
+    // testUpload();
     try {
         std::cout << "[INFO] Iniciando o ServerManager com mock de configuracoes..." << std::endl;
 

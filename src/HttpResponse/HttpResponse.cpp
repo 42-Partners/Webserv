@@ -49,6 +49,11 @@ int HttpResponse::getStatusCode() const
 	return (this->_statusCode);
 }
 
+std::string HttpResponse::getBody() const {
+	return (this->_body);
+}
+
+
 std::string HttpResponse::serialize()
 {
 	return (std::string());
