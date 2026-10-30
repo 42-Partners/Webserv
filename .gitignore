@@ -44,6 +44,9 @@ build/
 Build/
 build-*/
 
+# Upload server files
+uploads/
+
 # CMake generated files
 CMakeFiles/
 CMakeCache.txt

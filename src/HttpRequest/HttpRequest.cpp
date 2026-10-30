@@ -40,6 +40,10 @@ const std::string& HttpRequest::getBody() const { return(this->_body); }
 
 const std::map<std::string, std::string>& HttpRequest::getHeaders() const { return(this->_headers); }
 
+size_t HttpRequest::getContentLength() const { return (this->_contentLength); }
+
+bool HttpRequest::isChunked() const { return (this->_isChunked); }
+
 std::string HttpRequest::getHeader(const std::string& key) const
 {
 	const_map_iterator it = this->_headers.find(key);
@@ -60,4 +64,19 @@ bool HttpRequest::hasHeader(const std::string& key) const
     }
 
     return false;
+}
+
+void HttpRequest::clear()
+{
+	this->_method.clear();
+	this->_uri.clear();
+	this->_path.clear();
+	this->_queryString.clear();
+	this->_httpVersion.clear();
+	this->_headers.clear();
+	this->_body.clear();
+	this->_state = PARSING_REQUEST_LINE;
+	this->_errorCode = 0;
+	this->_contentLength = 0;
+	this->_isChunked = false;
 }

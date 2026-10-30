@@ -16,8 +16,11 @@ class HttpResponse {
 		void setBody(const std::string & body);
 
 		int getStatusCode() const;
+		std::string getBody() const;
 		
 		std::string serialize();
+
+		void clear(); // armeneze: talves não seja necessario, mas deixa ai ate segunda ordem
 
 	private:
 		int _statusCode;

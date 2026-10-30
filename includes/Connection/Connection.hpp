@@ -2,10 +2,11 @@
 #define CONNECTION_HPP
 
 #include <string>
-#include <ctime>
 
-#include "config/ConfigData.hpp"
 #include "HttpRequest/HttpRequest.hpp"
+#include "HttpResponse/HttpResponse.hpp"
+#include "config/ServerConfig.hpp"
+#include <ctime>
 
 enum ConnectionState {
     READING_HEADER,
@@ -26,11 +27,14 @@ private:
     HttpRequest*        _httpRequest;
     time_t              _lastActivity;
     ConnectionState     _connectionState;
+    HttpResponse        _httpResponse;
 
 public:
     Connection();
     Connection(int ConnectionFd, const std::string& ConnectionIp, const ServerConfig* config);
     ~Connection();
+    Connection(const Connection& other);
+    Connection& operator=(const Connection& other);
     int                 getFd() const;
     ConnectionState     getState() const;
     void                setState(ConnectionState newState);

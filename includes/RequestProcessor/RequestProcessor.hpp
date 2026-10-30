@@ -2,9 +2,9 @@
 #define REQUESTPROCESSOR_HPP
 
 #include "Connection/Connection.hpp"
-#include "config/ConfigData.hpp"
+#include "config/ServerConfig.hpp"
 #include "HttpRequest/HttpRequest.hpp"
 
-void process( Connection &, ServerConfig & );
+void process(Connection & connection, ServerConfig & config);
 
 #endif
