@@ -30,20 +30,20 @@ class HttpRequest {
 
 		void feed( std::string & );
 
+		int getErrorCode() const;
+		ParsingState getState() const;
 		bool getKeepAlive() const;
 		const std::string& getMethod() const;
 		const std::string& getUri() const;
 		const std::string& getPath() const;
 		const std::string& getQueryString() const;
 		const std::string& getHttpVersion() const;
-		std::string        getHeader(const std::string& key) const;
-		bool               hasHeader(const std::string& key) const;
-		const std::map<std::string, std::string>& getHeaders() const;
 		const std::string& getBody() const;
-		ParsingState       getState() const;
-		int                getErrorCode() const;
-		size_t             getContentLength() const;
-		bool               isChunked() const;
+		const std::map<std::string, std::string> & getHeaders() const;
+		std::string getHeader( const std::string & ) const;
+
+		bool hasHeader( const std::string & ) const;
+
 		void clear();
 		
 	private:
@@ -89,9 +89,5 @@ class HttpRequest {
 		static const size_t MAX_CHUNK_SIZE_LINE = 32;
 		static const size_t DEFAULT_MAX_BODY = 1048576;
 };
-
-
-//apagar: essa funcao fica responsavel por popular o objeto HttpRequest, não deve ir para a versão final de entrega do projeto.
-void parseIncomingBuffer(HttpRequest& req, const std::string& rawBuffer);
 
 #endif
