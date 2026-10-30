@@ -1,10 +1,9 @@
 #include "HttpRequest/HttpRequest.hpp"
 #include "StatusCode/StatusCode.hpp"
+#include "../tests.hpp"
 
-#include <cstring>
 #include <iostream>
 #include <sstream>
-#include <string>
 #include <vector>
 
 // ===========================================================================
@@ -12,11 +11,11 @@
 // kHuge precisa ficar bem acima de MAX_CHUNK_SIZE_LINE.
 // ===========================================================================
 
-static const size_t kMaxRequestLine = 8192;
-static const size_t kMaxHeadersSize = 8192;
-static const size_t kMaxHeaderCount = 100;
-static const size_t kDefaultMaxBody = 1048576;
-static const size_t kHuge           = 10000;
+const size_t kMaxRequestLine = 8192;
+const size_t kMaxHeadersSize = 8192;
+const size_t kMaxHeaderCount = 100;
+const size_t kDefaultMaxBody = 1048576;
+const size_t kHuge           = 10000;
 
 // Prefixos reutilizados (literais, para concatenar com outros literais).
 #define REQLINE "GET / HTTP/1.1\r\n"
@@ -26,17 +25,16 @@ static const size_t kHuge           = 10000;
 #define RL(uri) "GET " uri " HTTP/1.1\r\n"
 
 #define COUNT(a) (sizeof(a) / sizeof((a)[0]))
-#define RUN(t) do { if (g_verbose) std::cout << "== " #t "\n"; t(); } while (0)
 
 // ===========================================================================
 // Infraestrutura
 // ===========================================================================
 
-static int  g_passed  = 0;
-static int  g_failed  = 0;
-static bool g_verbose = false;
+int g_passed = 0;
+int g_failed = 0;
+bool g_verbose = false;
 
-static void check(bool ok, const std::string& name) {
+void check(bool ok, const std::string& name) {
 	if (ok) {
 		++g_passed;
 		if (g_verbose)
@@ -47,7 +45,7 @@ static void check(bool ok, const std::string& name) {
 	}
 }
 
-static const char* stateName(int s) {
+const char* stateName(int s) {
 	if (s == HttpRequest::PARSING_REQUEST_LINE) return "PARSING_REQUEST_LINE";
 	if (s == HttpRequest::PARSING_HEADERS)      return "PARSING_HEADERS";
 	if (s == HttpRequest::PARSING_BODY)         return "PARSING_BODY";
@@ -57,44 +55,44 @@ static const char* stateName(int s) {
 	return "?";
 }
 
-static std::string describe(const HttpRequest& r) {
+std::string describe(const HttpRequest& r) {
 	std::ostringstream oss;
 	oss << "estado=" << stateName(r.getState()) << " codigo=" << r.getErrorCode();
 	return oss.str();
 }
 
-static void expectState(const HttpRequest& r, int state, const std::string& name) {
+void expectState(const HttpRequest& r, int state, const std::string& name) {
 	bool ok = (r.getState() == state && r.getErrorCode() == 0);
 	check(ok, ok ? name : name + " [" + describe(r) + "]");
 }
 
-static std::string num(size_t n) {
+std::string num(size_t n) {
 	std::ostringstream oss;
 	oss << n;
 	return oss.str();
 }
 
-static void expectError(const HttpRequest& r, int code, const std::string& name) {
+void expectError(const HttpRequest& r, int code, const std::string& name) {
 	bool ok = (r.getState() == HttpRequest::REQUEST_ERROR && r.getErrorCode() == code);
 	check(ok, ok ? name : name + " [esperado erro " + num(code) + ", obtido " + describe(r) + "]");
 }
 
-static void expectComplete(const HttpRequest& r, const std::string& name) {
+void expectComplete(const HttpRequest& r, const std::string& name) {
 	expectState(r, HttpRequest::REQUEST_COMPLETE, name);
 }
 
-static bool isDone(const HttpRequest& r) {
+bool isDone(const HttpRequest& r) {
 	return r.getState() == HttpRequest::REQUEST_COMPLETE ||
 	       r.getState() == HttpRequest::REQUEST_ERROR;
 }
 
-static void feedAll(HttpRequest& r, const std::string& data) {
+void feedAll(HttpRequest& r, const std::string& data) {
 	std::string buffer(data);
 	r.feed(buffer);
 }
 
 // Alimenta byte a byte e para ao chegar em um estado terminal.
-static void feedByByte(HttpRequest& r, const std::string& data) {
+void feedByByte(HttpRequest& r, const std::string& data) {
 	std::string buffer;
 	for (size_t i = 0; i < data.size() && !isDone(r); ++i) {
 		buffer += data[i];
@@ -104,7 +102,7 @@ static void feedByByte(HttpRequest& r, const std::string& data) {
 
 // Alimenta byte a byte. Devolve false se o estado virou COMPLETE ou ERROR
 // antes do ultimo byte.
-static bool feedByteByByteStrict(HttpRequest& r, const std::string& data) {
+bool feedByteByByteStrict(HttpRequest& r, const std::string& data) {
 	std::string buffer;
 	for (size_t i = 0; i < data.size(); ++i) {
 		buffer += data[i];
@@ -115,17 +113,17 @@ static bool feedByteByByteStrict(HttpRequest& r, const std::string& data) {
 	return true;
 }
 
-static std::string lengthHeaders(size_t length) {
+std::string lengthHeaders(size_t length) {
 	return "POST /upload HTTP/1.1\r\n" HOST "Content-Length: " + num(length) + "\r\n\r\n";
 }
 
-static std::string chunkedHeaders() {
+std::string chunkedHeaders() {
 	return CHUNKED;
 }
 
 // 413 em plataformas 64 bits (F*16 cabe em size_t); 400 se houver overflow.
-static int hugeChunkCode() {
-	return sizeof(size_t) >= 8 ? STATUS_PAYLOAD_TOO_LARGE : STATUS_BAD_REQUEST;
+int hugeChunkCode() {
+	return sizeof(size_t) >= 8 ? STATUS_CONTENT_TOO_LARGE : STATUS_BAD_REQUEST;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,7 +139,7 @@ struct Snapshot {
 	std::string leftover;
 };
 
-static Snapshot snapshot(const HttpRequest& r, const std::string& leftover) {
+Snapshot snapshot(const HttpRequest& r, const std::string& leftover) {
 	Snapshot s;
 	s.state    = r.getState();
 	s.code     = r.getErrorCode();
@@ -153,7 +151,7 @@ static Snapshot snapshot(const HttpRequest& r, const std::string& leftover) {
 }
 
 // body, path e sobra so sao comparados quando a requisicao completou.
-static bool sameSnapshot(const Snapshot& a, const Snapshot& b) {
+bool sameSnapshot(const Snapshot& a, const Snapshot& b) {
 	if (a.state != b.state || a.code != b.code)
 		return false;
 	if (a.state == HttpRequest::REQUEST_COMPLETE)
@@ -162,21 +160,21 @@ static bool sameSnapshot(const Snapshot& a, const Snapshot& b) {
 	return true;
 }
 
-static Snapshot wholeSnapshot(const std::string& input, size_t maxBody) {
+Snapshot wholeSnapshot(const std::string& input, size_t maxBody) {
 	HttpRequest r(maxBody);
 	std::string buffer(input);
 	r.feed(buffer);
 	return snapshot(r, buffer);
 }
 
-static unsigned nextRandom(unsigned& seed) {
+unsigned nextRandom(unsigned& seed) {
 	seed = seed * 1103515245u + 12345u;
 	return (seed >> 16) & 0x7fff;
 }
 
 // Corta a entrada em todos os pontos possiveis (2 pedacos) e tambem byte a
 // byte; o resultado precisa ser igual ao de alimentar tudo de uma vez.
-static void checkSplitEquivalence(const std::string& name, const std::string& input,
+void checkSplitEquivalence(const std::string& name, const std::string& input,
                                   size_t maxBody = kDefaultMaxBody) {
 	Snapshot expected = wholeSnapshot(input, maxBody);
 
@@ -211,7 +209,7 @@ static void checkSplitEquivalence(const std::string& name, const std::string& in
 }
 
 // Fragmentacao pseudo-aleatoria (reproduzivel) com pedacos de 1 a 17 bytes.
-static void checkRandomSplits(const std::string& name, const std::string& input,
+void checkRandomSplits(const std::string& name, const std::string& input,
                               size_t maxBody = kDefaultMaxBody, int rounds = 200) {
 	Snapshot expected = wholeSnapshot(input, maxBody);
 	bool ok = true;
@@ -252,7 +250,7 @@ struct ErrCase {
 };
 
 // Cada caso roda: tudo de uma vez, byte a byte e com cortes em qualquer ponto.
-static void runErrCases(const std::string& group, const ErrCase* cases, size_t n,
+void runErrCases(const std::string& group, const ErrCase* cases, size_t n,
                         size_t maxBody = kDefaultMaxBody) {
 	for (size_t i = 0; i < n; ++i) {
 		std::string name = group + ": " + cases[i].name;
@@ -274,7 +272,7 @@ static void runErrCases(const std::string& group, const ErrCase* cases, size_t n
 // Estado inicial
 // ===========================================================================
 
-static void testInitialState() {
+void testInitialState() {
 	HttpRequest r;
 
 	check(r.getState() == HttpRequest::PARSING_REQUEST_LINE, "Inicial: PARSING_REQUEST_LINE");
@@ -293,7 +291,7 @@ static void testInitialState() {
 // Request line
 // ===========================================================================
 
-static void testValidRequest() {
+void testValidRequest() {
 	HttpRequest request;
 	std::string buffer = "GET /index.html HTTP/1.1\r\n";
 
@@ -308,7 +306,7 @@ static void testValidRequest() {
 	check(buffer.empty(),                                     "GET valido: buffer consumido");
 }
 
-static void testSupportedMethods() {
+void testSupportedMethods() {
 	const char* methods[] = {"GET", "POST", "DELETE"};
 
 	for (size_t i = 0; i < COUNT(methods); ++i) {
@@ -324,8 +322,8 @@ static void testSupportedMethods() {
 	}
 }
 
-static void testRequestLineErrors() {
-	static const ErrCase cases[] = {
+void testRequestLineErrors() {
+	const ErrCase cases[] = {
 		{ "espacos extras",                     "GET  /index.html HTTP/1.1\r\n",  STATUS_BAD_REQUEST },
 		{ "espaco no fim da linha",             "GET / HTTP/1.1 \r\n",            STATUS_BAD_REQUEST },
 		{ "espaco no inicio da linha",          " GET / HTTP/1.1\r\n",            STATUS_BAD_REQUEST },
@@ -355,8 +353,8 @@ static void testRequestLineErrors() {
 	runErrCases("Request line", cases, COUNT(cases));
 }
 
-static void testUriErrors() {
-	static const ErrCase cases[] = {
+void testUriErrors() {
+	const ErrCase cases[] = {
 		{ "escape hexa invalido %GG",           RL("/%GG"),                       STATUS_BAD_REQUEST },
 		{ "escape hexa invalido %G1",           RL("/%G1"),                       STATUS_BAD_REQUEST },
 		{ "escape hexa invalido %1G",           RL("/%1G"),                       STATUS_BAD_REQUEST },
@@ -412,8 +410,8 @@ struct UriCase {
 	std::string query;
 };
 
-static void testUriAccepted() {
-	static const UriCase cases[] = {
+void testUriAccepted() {
+	const UriCase cases[] = {
 		{ "raiz",                              "/",                  "/",                 ""        },
 		{ "arquivo",                           "/index.html",        "/index.html",       ""        },
 		{ "diretorios aninhados",              "/images/icons/logo.png", "/images/icons/logo.png", "" },
@@ -459,7 +457,7 @@ static void testUriAccepted() {
 	}
 }
 
-static void testQueryString() {
+void testQueryString() {
 	HttpRequest request;
 	std::string buffer = "GET /search?q=cpp HTTP/1.1\r\n";
 
@@ -476,8 +474,8 @@ struct VersionCase {
 	int         expectedCode;
 };
 
-static void testHttpVersions() {
-	static const VersionCase cases[] = {
+void testHttpVersions() {
+	const VersionCase cases[] = {
 		{ "HTTP/1.1",   0 },
 
 		// bem formada, mas nao suportada -> 505
@@ -534,7 +532,7 @@ static void testHttpVersions() {
 // Request line: enquadramento (linha incompleta, sobra, CRLF iniciais, ...)
 // ---------------------------------------------------------------------------
 
-static void testIncompleteLine() {
+void testIncompleteLine() {
 	HttpRequest request;
 	std::string buffer = "GET / HTTP/1.1";
 
@@ -545,7 +543,7 @@ static void testIncompleteLine() {
 	check(buffer == "GET / HTTP/1.1",                              "Linha incompleta: buffer preservado");
 }
 
-static void testIncompleteLineCrOnly() {
+void testIncompleteLineCrOnly() {
 	HttpRequest request;
 	std::string buffer = "GET / HTTP/1.1\r";
 
@@ -560,7 +558,7 @@ static void testIncompleteLineCrOnly() {
 	check(request.getState() == HttpRequest::PARSING_HEADERS, "CR + LF chegando depois: linha aceita");
 }
 
-static void testBareLfDoesNotTerminate() {
+void testBareLfDoesNotTerminate() {
 	HttpRequest request;
 	std::string input = "GET / HTTP/1.1\nHost: localhost\n\n";
 	std::string buffer = input;
@@ -572,7 +570,7 @@ static void testBareLfDoesNotTerminate() {
 	check(buffer == input, "LF sem CR: buffer preservado");
 }
 
-static void testRequestLineInPieces() {
+void testRequestLineInPieces() {
 	HttpRequest request;
 	std::string buffer = "GE";
 
@@ -590,7 +588,7 @@ static void testRequestLineInPieces() {
 	check(request.getPath() == "/index.html", "Linha em partes: path correto");
 }
 
-static void testAdditionalData() {
+void testAdditionalData() {
 	HttpRequest request;
 	std::string buffer = "GET / HTTP/1.1\r\nHost: localhost\r\n";
 
@@ -600,7 +598,7 @@ static void testAdditionalData() {
 	check(buffer == "Host: localhost\r\n",                     "Dados adicionais: restante preservado");
 }
 
-static void testEmptyLinesBeforeRequest() {
+void testEmptyLinesBeforeRequest() {
 	{
 		HttpRequest request;
 		std::string buffer = "\r\nGET / HTTP/1.1\r\n";
@@ -628,12 +626,12 @@ static void testEmptyLinesBeforeRequest() {
 	}
 }
 
-static std::string requestLineOfLength(size_t total) {
+std::string requestLineOfLength(size_t total) {
 	// "GET " + path + " HTTP/1.1"  => path tem total - 13 bytes
 	return "GET /" + std::string(total - 4 - 1 - 9, 'a') + " HTTP/1.1";
 }
 
-static void testRequestLineLengthBoundary() {
+void testRequestLineLengthBoundary() {
 	{
 		HttpRequest request;
 		feedAll(request, requestLineOfLength(kMaxRequestLine) + "\r\n");
@@ -668,7 +666,7 @@ static void testRequestLineLengthBoundary() {
 // Headers
 // ===========================================================================
 
-static void testValidHeaders() {
+void testValidHeaders() {
 	HttpRequest request;
 	std::string buffer =
 		"GET / HTTP/1.1\r\n"
@@ -686,8 +684,8 @@ static void testValidHeaders() {
 	check(request.getHeader("accept") == "*/*",                 "Headers validos: Accept");
 }
 
-static void testHeaderErrors() {
-	static const ErrCase cases[] = {
+void testHeaderErrors() {
+	const ErrCase cases[] = {
 		// sem Host / Host invalido
 		{ "sem headers (Host ausente)",          REQLINE "\r\n",                         STATUS_BAD_REQUEST },
 		{ "Host ausente",                        REQLINE "User-Agent: x\r\n\r\n",        STATUS_BAD_REQUEST },
@@ -747,8 +745,8 @@ struct HeaderCase {
 	std::string value;
 };
 
-static void testHeadersAccepted() {
-	static const HeaderCase cases[] = {
+void testHeadersAccepted() {
+	const HeaderCase cases[] = {
 		{ "valor vazio",                     "X-Empty:\r\n",                 "x-empty",  "" },
 		{ "valor so com espacos",            "X-Blank:   \r\n",              "x-blank",  "" },
 		{ "espacos das pontas removidos",    "X-A:   v  \r\n",               "x-a",      "v" },
@@ -780,8 +778,8 @@ static void testHeadersAccepted() {
 	}
 }
 
-static void testHostAccepted() {
-	static const char* hosts[] = {
+void testHostAccepted() {
+	const char* hosts[] = {
 		"localhost", "localhost:8080", "127.0.0.1", "127.0.0.1:80", "[::1]", "[::1]:8080",
 		"example.com", "EXAMPLE.COM", "sub.example.com:443", "a_b.c-d"
 	};
@@ -793,7 +791,7 @@ static void testHostAccepted() {
 	}
 }
 
-static void testHeaderNameIsCaseInsensitive() {
+void testHeaderNameIsCaseInsensitive() {
 	HttpRequest request;
 	std::string buffer = REQLINE "hOsT: localhost\r\n\r\n";
 
@@ -812,8 +810,8 @@ struct ConnCase {
 	bool        keepAlive;
 };
 
-static void testConnectionHeader() {
-	static const ConnCase cases[] = {
+void testConnectionHeader() {
+	const ConnCase cases[] = {
 		{ "ausente",                          "",                                         true  },
 		{ "close",                            "Connection: close\r\n",                    false },
 		{ "Close (maiusculo inicial)",        "Connection: Close\r\n",                    false },
@@ -839,7 +837,7 @@ static void testConnectionHeader() {
 	}
 }
 
-static void testHeadersInPieces() {
+void testHeadersInPieces() {
 	HttpRequest request;
 	std::string buffer = REQLINE;
 
@@ -868,7 +866,7 @@ static void testHeadersInPieces() {
 	check(request.getHeader("x-a") == "b",          "Headers em partes: X-A");
 }
 
-static void testHeadersByteByByte() {
+void testHeadersByteByByte() {
 	HttpRequest request;
 	std::string data =
 		"GET /a/b?x=1 HTTP/1.1\r\n"
@@ -884,7 +882,7 @@ static void testHeadersByteByByte() {
 	check(request.getHeader("x-two") == "2", "Headers byte a byte: ultimo header");
 }
 
-static void testHeadersWithoutTerminatorWaits() {
+void testHeadersWithoutTerminatorWaits() {
 	HttpRequest request;
 	std::string buffer = GETH "X-A: b\r\n";
 
@@ -896,7 +894,7 @@ static void testHeadersWithoutTerminatorWaits() {
 	      "Headers sem linha em branco: buffer preservado");
 }
 
-static void testHeaderCountBoundary() {
+void testHeaderCountBoundary() {
 	for (int extra = 98; extra <= 100; ++extra) {
 		// Host + extra headers. 99 extras = 100 headers (limite); 100 extras = 101.
 		HttpRequest request;
@@ -916,13 +914,13 @@ static void testHeaderCountBoundary() {
 	}
 }
 
-static std::string headersOfBlockSize(size_t block) {
+std::string headersOfBlockSize(size_t block) {
 	// bloco = tudo entre a request line e a linha em branco final
 	const std::string base = "Host: localhost\r\nX-Fill: ";
 	return REQLINE + base + std::string(block - base.size(), 'a') + "\r\n\r\n";
 }
 
-static void testHeadersSizeBoundary() {
+void testHeadersSizeBoundary() {
 	{
 		HttpRequest request;
 		feedAll(request, headersOfBlockSize(kMaxHeadersSize - 1));
@@ -961,8 +959,8 @@ static void testHeadersSizeBoundary() {
 // Content-Length e Transfer-Encoding (decisao de enquadramento do body)
 // ===========================================================================
 
-static void testContentLengthErrors() {
-	static const ErrCase cases[] = {
+void testContentLengthErrors() {
+	const ErrCase cases[] = {
 		{ "abc",                    GETH "Content-Length: abc\r\n\r\n",     STATUS_BAD_REQUEST },
 		{ "negativo",               GETH "Content-Length: -1\r\n\r\n",      STATUS_BAD_REQUEST },
 		{ "com sinal +",            GETH "Content-Length: +5\r\n\r\n",      STATUS_BAD_REQUEST },
@@ -974,13 +972,13 @@ static void testContentLengthErrors() {
 		{ "notacao cientifica",     GETH "Content-Length: 1e3\r\n\r\n",     STATUS_BAD_REQUEST },
 		{ "decimal 5.0",            GETH "Content-Length: 5.0\r\n\r\n",     STATUS_BAD_REQUEST },
 		{ "com unidade",            GETH "Content-Length: 5b\r\n\r\n",      STATUS_BAD_REQUEST },
-		{ "um byte acima do limite", GETH "Content-Length: 1048577\r\n\r\n", STATUS_PAYLOAD_TOO_LARGE },
-		{ "muito acima do limite",  GETH "Content-Length: 99999999\r\n\r\n", STATUS_PAYLOAD_TOO_LARGE },
+		{ "um byte acima do limite", GETH "Content-Length: 1048577\r\n\r\n", STATUS_CONTENT_TOO_LARGE },
+		{ "muito acima do limite",  GETH "Content-Length: 99999999\r\n\r\n", STATUS_CONTENT_TOO_LARGE },
 	};
 	runErrCases("Content-Length", cases, COUNT(cases));
 }
 
-static void testContentLengthOverflow() {
+void testContentLengthOverflow() {
 	HttpRequest request;
 	std::string buffer = GETH "Content-Length: " + std::string(100, '9') + "\r\n\r\n";
 
@@ -988,11 +986,11 @@ static void testContentLengthOverflow() {
 
 	check(request.getState() == HttpRequest::REQUEST_ERROR &&
 	      (request.getErrorCode() == STATUS_BAD_REQUEST ||
-	       request.getErrorCode() == STATUS_PAYLOAD_TOO_LARGE),
+	       request.getErrorCode() == STATUS_CONTENT_TOO_LARGE),
 	      "Content-Length enorme: erro apropriado");
 }
 
-static void testContentLengthSizeMax() {
+void testContentLengthSizeMax() {
 	// 2^64 - 1 (e 2^64, que estoura size_t): nunca pode ser aceito.
 	const char* values[] = { "18446744073709551615", "18446744073709551616", "99999999999999999999" };
 	for (size_t i = 0; i < COUNT(values); ++i) {
@@ -1000,12 +998,12 @@ static void testContentLengthSizeMax() {
 		feedAll(request, std::string(GETH "Content-Length: ") + values[i] + "\r\n\r\n");
 		check(request.getState() == HttpRequest::REQUEST_ERROR &&
 		      (request.getErrorCode() == STATUS_BAD_REQUEST ||
-		       request.getErrorCode() == STATUS_PAYLOAD_TOO_LARGE),
+		       request.getErrorCode() == STATUS_CONTENT_TOO_LARGE),
 		      std::string("Content-Length ") + values[i] + ": rejeitado");
 	}
 }
 
-static void testContentLengthHeaderOnly() {
+void testContentLengthHeaderOnly() {
 	{
 		HttpRequest request;
 		feedAll(request, GETH "Content-Length: 0\r\n\r\n");
@@ -1033,8 +1031,8 @@ struct TeCase {
 	int         code;   // 0 = aceito (chunked), senao o erro esperado
 };
 
-static void testTransferEncodingValues() {
-	static const TeCase cases[] = {
+void testTransferEncodingValues() {
+	const TeCase cases[] = {
 		{ "chunked",                     "chunked",                    0 },
 		{ "Chunked",                     "Chunked",                    0 },
 		{ "CHUNKED",                     "CHUNKED",                    0 },
@@ -1076,7 +1074,7 @@ static void testTransferEncodingValues() {
 	}
 }
 
-static void testTransferEncodingOnGet() {
+void testTransferEncodingOnGet() {
 	HttpRequest request;
 	feedAll(request, GETH "Transfer-Encoding: chunked\r\n\r\n");
 	expectState(request, HttpRequest::PARSING_BODY, "GET com chunked: espera o body");
@@ -1086,7 +1084,7 @@ static void testTransferEncodingOnGet() {
 // Body com Content-Length
 // ===========================================================================
 
-static void testNoBodyKeepsExtraBytes() {
+void testNoBodyKeepsExtraBytes() {
 	// Sem Content-Length nem Transfer-Encoding o body e vazio (RFC 9112, 6.3):
 	// o que vier depois dos headers e outra requisicao.
 	HttpRequest request;
@@ -1100,7 +1098,7 @@ static void testNoBodyKeepsExtraBytes() {
 	check(buffer == next,            "Sem body: bytes seguintes nao sao consumidos como body");
 }
 
-static void testBodyContentLengthComplete() {
+void testBodyContentLengthComplete() {
 	HttpRequest request;
 	std::string buffer = lengthHeaders(5) + "hello";
 
@@ -1111,7 +1109,7 @@ static void testBodyContentLengthComplete() {
 	check(buffer.empty(),               "Body CL: buffer consumido");
 }
 
-static void testBodyContentLengthLeadingZeros() {
+void testBodyContentLengthLeadingZeros() {
 	HttpRequest request;
 	std::string buffer = GETH "Content-Length: 05\r\n\r\nhello";
 
@@ -1121,7 +1119,7 @@ static void testBodyContentLengthLeadingZeros() {
 	check(request.getBody() == "hello", "Body CL com zero a esquerda: 5 bytes");
 }
 
-static void testBodyContentLengthHeadersThenBody() {
+void testBodyContentLengthHeadersThenBody() {
 	HttpRequest request;
 	std::string buffer = lengthHeaders(5);
 
@@ -1135,7 +1133,7 @@ static void testBodyContentLengthHeadersThenBody() {
 	check(request.getBody() == "hello", "Body CL separado: conteudo do body");
 }
 
-static void testBodyContentLengthInPieces() {
+void testBodyContentLengthInPieces() {
 	HttpRequest request;
 	std::string buffer = lengthHeaders(10) + "hel";
 
@@ -1155,7 +1153,7 @@ static void testBodyContentLengthInPieces() {
 	check(buffer == "d",                     "Body CL em partes: byte excedente fica no buffer");
 }
 
-static void testBodyContentLengthByteByByte() {
+void testBodyContentLengthByteByByte() {
 	HttpRequest request;
 	std::string data = lengthHeaders(11) + "hello world";
 
@@ -1165,7 +1163,7 @@ static void testBodyContentLengthByteByByte() {
 	check(request.getBody() == "hello world", "Body CL byte a byte: conteudo do body");
 }
 
-static void testBodyContentLengthExtraBytes() {
+void testBodyContentLengthExtraBytes() {
 	HttpRequest request;
 	std::string next = "GET /next HTTP/1.1\r\n";
 	std::string buffer = lengthHeaders(5) + "hello" + next;
@@ -1177,7 +1175,7 @@ static void testBodyContentLengthExtraBytes() {
 	check(buffer == next,               "Body CL + proxima requisicao: bytes seguintes preservados no buffer");
 }
 
-static void testBodyContentLengthBinary() {
+void testBodyContentLengthBinary() {
 	// O body pode ter CRLF, CRLFCRLF e byte nulo: nada disso e delimitador.
 	std::string body = "ab\r\n\r\ncd";
 	body += '\0';
@@ -1192,7 +1190,7 @@ static void testBodyContentLengthBinary() {
 	check(request.getBody() == body, "Body CL binario: CRLF e byte nulo preservados");
 }
 
-static void testBodyContentLengthAllByteValues() {
+void testBodyContentLengthAllByteValues() {
 	std::string body;
 	for (int i = 0; i < 256; ++i)
 		body += static_cast<char>(i);
@@ -1205,7 +1203,7 @@ static void testBodyContentLengthAllByteValues() {
 	check(request.getBody() == body, "Body CL com os 256 valores de byte: preservados");
 }
 
-static void testBodyContentLengthMissingBytes() {
+void testBodyContentLengthMissingBytes() {
 	HttpRequest request;
 	std::string buffer = lengthHeaders(10) + "abcd";
 
@@ -1216,7 +1214,7 @@ static void testBodyContentLengthMissingBytes() {
 	check(buffer == "abcd",                                "Body CL incompleto: bytes ficam no buffer");
 }
 
-static void testZeroContentLengthKeepsExtraBytes() {
+void testZeroContentLengthKeepsExtraBytes() {
 	HttpRequest request;
 	std::string next = "GET /next HTTP/1.1\r\n";
 	std::string buffer = lengthHeaders(0) + next;
@@ -1228,7 +1226,7 @@ static void testZeroContentLengthKeepsExtraBytes() {
 	check(buffer == next,            "Content-Length 0 + proxima requisicao: bytes seguintes preservados");
 }
 
-static void testBodyContentLengthLarge() {
+void testBodyContentLengthLarge() {
 	std::string body;
 	body.reserve(kDefaultMaxBody);
 	for (size_t i = 0; i < kDefaultMaxBody; ++i)
@@ -1253,13 +1251,13 @@ static void testBodyContentLengthLarge() {
 // Limite de body (max_body vindo do ServerConfig via construtor)
 // ===========================================================================
 
-static void testDefaultLimitBoundary() {
+void testDefaultLimitBoundary() {
 	HttpRequest request;
 	feedAll(request, lengthHeaders(kDefaultMaxBody));
 	expectState(request, HttpRequest::PARSING_BODY, "Limite padrao: Content-Length igual ao limite (1 MB) aceito");
 }
 
-static void testCustomLimits() {
+void testCustomLimits() {
 	{
 		HttpRequest request(10);
 		feedAll(request, lengthHeaders(10));
@@ -1268,7 +1266,7 @@ static void testCustomLimits() {
 	{
 		HttpRequest request(10);
 		feedAll(request, lengthHeaders(11));
-		expectError(request, STATUS_PAYLOAD_TOO_LARGE, "Limite 10: Content-Length 11 STATUS_PAYLOAD_TOO_LARGE");
+		expectError(request, STATUS_CONTENT_TOO_LARGE, "Limite 10: Content-Length 11 STATUS_CONTENT_TOO_LARGE");
 	}
 	{
 		// Pega o erro de continuar comparando com o limite padrao em vez
@@ -1290,7 +1288,7 @@ static void testCustomLimits() {
 	{
 		HttpRequest request(0);
 		feedAll(request, lengthHeaders(1));
-		expectError(request, STATUS_PAYLOAD_TOO_LARGE, "Limite 0: Content-Length 1 STATUS_PAYLOAD_TOO_LARGE");
+		expectError(request, STATUS_CONTENT_TOO_LARGE, "Limite 0: Content-Length 1 STATUS_CONTENT_TOO_LARGE");
 	}
 	{
 		HttpRequest request(0);
@@ -1300,7 +1298,7 @@ static void testCustomLimits() {
 	{
 		HttpRequest request(0);
 		feedAll(request, chunkedHeaders() + "1\r\nX\r\n0\r\n\r\n");
-		expectError(request, STATUS_PAYLOAD_TOO_LARGE, "Limite 0: chunked de 1 byte STATUS_PAYLOAD_TOO_LARGE");
+		expectError(request, STATUS_CONTENT_TOO_LARGE, "Limite 0: chunked de 1 byte STATUS_CONTENT_TOO_LARGE");
 	}
 }
 
@@ -1314,8 +1312,8 @@ struct BodyCase {
 	std::string body;      // body esperado
 };
 
-static void testChunkedAccepted() {
-	static const BodyCase cases[] = {
+void testChunkedAccepted() {
+	const BodyCase cases[] = {
 		{ "so o chunk final",              "0\r\n\r\n",                                    "" },
 		{ "chunk final com extensao",      "0;ext=1\r\n\r\n",                              "" },
 		{ "chunk final com zeros",         "00\r\n\r\n",                                   "" },
@@ -1362,7 +1360,7 @@ static void testChunkedAccepted() {
 	}
 }
 
-static void testChunkedHeadersThenBody() {
+void testChunkedHeadersThenBody() {
 	HttpRequest request;
 	std::string buffer = chunkedHeaders();
 
@@ -1376,7 +1374,7 @@ static void testChunkedHeadersThenBody() {
 	check(request.getBody() == "hello", "Chunked separado: conteudo do body");
 }
 
-static void testChunkedPartialStates() {
+void testChunkedPartialStates() {
 	{
 		HttpRequest request;
 		std::string buffer = chunkedHeaders() + "5\r\nhel";
@@ -1468,7 +1466,7 @@ static void testChunkedPartialStates() {
 	}
 }
 
-static void testChunkedByteByByte() {
+void testChunkedByteByByte() {
 	HttpRequest request;
 	std::string data = chunkedHeaders() + "5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n";
 
@@ -1478,7 +1476,7 @@ static void testChunkedByteByByte() {
 	check(request.getBody() == "hello world", "Chunked byte a byte: conteudo do body");
 }
 
-static void testChunkedExtraBytes() {
+void testChunkedExtraBytes() {
 	{
 		HttpRequest request;
 		std::string next = "GET /next HTTP/1.1\r\n";
@@ -1509,8 +1507,8 @@ static void testChunkedExtraBytes() {
 	}
 }
 
-static void testChunkedErrors() {
-	static const ErrCase cases[] = {
+void testChunkedErrors() {
+	const ErrCase cases[] = {
 		// linha de tamanho
 		{ "tamanho nao hexa",             CHUNKED "g\r\nhello\r\n0\r\n\r\n",        STATUS_BAD_REQUEST },
 		{ "tamanho negativo",             CHUNKED "-1\r\nhello\r\n0\r\n\r\n",       STATUS_BAD_REQUEST },
@@ -1555,13 +1553,13 @@ static void testChunkedErrors() {
 	runErrCases("Chunked", cases, COUNT(cases));
 }
 
-static void testChunkedLimitErrors() {
-	static const ErrCase cases[] = {
-		{ "um chunk de 11 bytes",         CHUNKED "B\r\nhello world\r\n0\r\n\r\n",  STATUS_PAYLOAD_TOO_LARGE },
-		{ "recusa antes de receber os dados", CHUNKED "B\r\n",                       STATUS_PAYLOAD_TOO_LARGE },
-		{ "soma dos chunks (12) acima",   CHUNKED "6\r\nabcdef\r\n6\r\nghijkl\r\n0\r\n\r\n", STATUS_PAYLOAD_TOO_LARGE },
+void testChunkedLimitErrors() {
+	const ErrCase cases[] = {
+		{ "um chunk de 11 bytes",         CHUNKED "B\r\nhello world\r\n0\r\n\r\n",  STATUS_CONTENT_TOO_LARGE },
+		{ "recusa antes de receber os dados", CHUNKED "B\r\n",                       STATUS_CONTENT_TOO_LARGE },
+		{ "soma dos chunks (12) acima",   CHUNKED "6\r\nabcdef\r\n6\r\nghijkl\r\n0\r\n\r\n", STATUS_CONTENT_TOO_LARGE },
 		{ "segundo chunk gigante",        CHUNKED "5\r\nhello\r\nFFFFFFFFFFFFFFFF\r\n", hugeChunkCode() },
-		{ "segundo chunk estoura o saldo", CHUNKED "5\r\nhello\r\n6\r\n",            STATUS_PAYLOAD_TOO_LARGE },
+		{ "segundo chunk estoura o saldo", CHUNKED "5\r\nhello\r\n6\r\n",            STATUS_CONTENT_TOO_LARGE },
 	};
 	runErrCases("Chunked com limite 10", cases, COUNT(cases), 10);
 
@@ -1571,10 +1569,10 @@ static void testChunkedLimitErrors() {
 	check(request.getBody() == "abcdefghij", "Chunked soma 10 bytes com limite 10: conteudo do body");
 }
 
-static void testChunkedSizeLineLimits() {
+void testChunkedSizeLineLimits() {
 	const std::string hello = "\r\nhello\r\n0\r\n\r\n";
 
-	static const int lengths[] = { 100, static_cast<int>(kHuge) };
+	const int lengths[] = { 100, static_cast<int>(kHuge) };
 	for (size_t i = 0; i < COUNT(lengths); ++i) {
 		std::string digits(lengths[i], '1');
 		{
@@ -1608,22 +1606,22 @@ static void testChunkedSizeLineLimits() {
 	}
 }
 
-static void testChunkedSizeOverflow() {
+void testChunkedSizeOverflow() {
 	// 20 digitos F nao cabem em size_t (64 bits): nao pode quebrar o parser.
 	HttpRequest request;
 	feedAll(request, chunkedHeaders() + std::string(20, 'F') + "\r\nhello\r\n0\r\n\r\n");
 
 	check(request.getState() == HttpRequest::REQUEST_ERROR &&
 	      (request.getErrorCode() == STATUS_BAD_REQUEST ||
-	       request.getErrorCode() == STATUS_PAYLOAD_TOO_LARGE),
+	       request.getErrorCode() == STATUS_CONTENT_TOO_LARGE),
 	      "Chunked tamanho com overflow: erro apropriado");
 
 	HttpRequest request2;
 	feedAll(request2, chunkedHeaders() + "FFFFFFFFFFFFFFFF\r\n");
-	expectError(request2, hugeChunkCode(), "Chunked tamanho SIZE_MAX: STATUS_PAYLOAD_TOO_LARGE");
+	expectError(request2, hugeChunkCode(), "Chunked tamanho SIZE_MAX: STATUS_CONTENT_TOO_LARGE");
 }
 
-static void testChunkedTrailerSizeLimits() {
+void testChunkedTrailerSizeLimits() {
 	{
 		HttpRequest request;
 		feedAll(request, chunkedHeaders() + "0\r\nX: " + std::string(kMaxHeadersSize + 800, 'a') + "\r\n\r\n");
@@ -1643,7 +1641,7 @@ static void testChunkedTrailerSizeLimits() {
 	}
 }
 
-static void testChunkedManySmallChunks() {
+void testChunkedManySmallChunks() {
 	std::string payload;
 	std::string expected;
 	for (int i = 0; i < 1000; ++i) {
@@ -1659,7 +1657,7 @@ static void testChunkedManySmallChunks() {
 	check(request.getBody() == expected, "Chunked 1000 chunks de 1 byte: conteudo");
 }
 
-static void testChunkedLargeInPieces() {
+void testChunkedLargeInPieces() {
 	std::string data;
 	for (size_t i = 0; i < 100000; ++i)
 		data += static_cast<char>(i % 253);
@@ -1683,7 +1681,7 @@ static void testChunkedLargeInPieces() {
 // Bytes NUL (nao podem truncar nem enganar o parser)
 // ===========================================================================
 
-static void testNulBytes() {
+void testNulBytes() {
 	const std::string nul(1, '\0');
 	{
 		HttpRequest request;
@@ -1749,7 +1747,7 @@ static void testNulBytes() {
 // Estado terminal e pipelining
 // ===========================================================================
 
-static void testCompleteIsSticky() {
+void testCompleteIsSticky() {
 	HttpRequest request;
 	std::string buffer = GETH "\r\n";
 	request.feed(buffer);
@@ -1764,7 +1762,7 @@ static void testCompleteIsSticky() {
 	check(request.getPath() == "/", "Estado terminal: path original preservado");
 }
 
-static void testErrorIsSticky() {
+void testErrorIsSticky() {
 	HttpRequest request;
 	std::string buffer = "FOO / HTTP/1.1\r\n";
 	request.feed(buffer);
@@ -1778,7 +1776,7 @@ static void testErrorIsSticky() {
 	check(buffer == next, "Erro: nao consome dados depois do erro");
 }
 
-static void testPipelinedRequests() {
+void testPipelinedRequests() {
 	{
 		std::string buffer = GETH "\r\n" + lengthHeaders(5) + "hello" + GETH "\r\n";
 
@@ -1821,14 +1819,14 @@ static void testPipelinedRequests() {
 // Fragmentacao: qualquer corte tem que dar o mesmo resultado
 // ===========================================================================
 
-static std::string manyHeadersRequest() {
+std::string manyHeadersRequest() {
 	std::string s = GETH;
 	for (int i = 0; i < 30; ++i)
 		s += "X-Test-" + num(i) + ": value" + num(i) + "\r\n";
 	return s + "Connection: close\r\n\r\n";
 }
 
-static void testFragmentation() {
+void testFragmentation() {
 	const std::string pipelineTail = "GET /next HTTP/1.1\r\n";
 
 	checkSplitEquivalence("Fragmentacao GET simples",
@@ -1863,89 +1861,3 @@ static void testFragmentation() {
 
 // ===========================================================================
 
-int main(int argc, char** argv) {
-	if (argc > 1 && std::strcmp(argv[1], "-v") == 0)
-		g_verbose = true;
-
-	RUN(testInitialState);
-
-	// request line
-	RUN(testValidRequest);
-	RUN(testSupportedMethods);
-	RUN(testRequestLineErrors);
-	RUN(testUriErrors);
-	RUN(testUriAccepted);
-	RUN(testQueryString);
-	RUN(testHttpVersions);
-	RUN(testIncompleteLine);
-	RUN(testIncompleteLineCrOnly);
-	RUN(testBareLfDoesNotTerminate);
-	RUN(testRequestLineInPieces);
-	RUN(testAdditionalData);
-	RUN(testEmptyLinesBeforeRequest);
-	RUN(testRequestLineLengthBoundary);
-
-	// headers
-	RUN(testValidHeaders);
-	RUN(testHeaderErrors);
-	RUN(testHeadersAccepted);
-	RUN(testHostAccepted);
-	RUN(testHeaderNameIsCaseInsensitive);
-	RUN(testConnectionHeader);
-	RUN(testHeadersInPieces);
-	RUN(testHeadersByteByByte);
-	RUN(testHeadersWithoutTerminatorWaits);
-	RUN(testHeaderCountBoundary);
-	RUN(testHeadersSizeBoundary);
-
-	// Content-Length / Transfer-Encoding
-	RUN(testContentLengthErrors);
-	RUN(testContentLengthOverflow);
-	RUN(testContentLengthSizeMax);
-	RUN(testContentLengthHeaderOnly);
-	RUN(testTransferEncodingValues);
-	RUN(testTransferEncodingOnGet);
-
-	// body com Content-Length
-	RUN(testNoBodyKeepsExtraBytes);
-	RUN(testBodyContentLengthComplete);
-	RUN(testBodyContentLengthLeadingZeros);
-	RUN(testBodyContentLengthHeadersThenBody);
-	RUN(testBodyContentLengthInPieces);
-	RUN(testBodyContentLengthByteByByte);
-	RUN(testBodyContentLengthExtraBytes);
-	RUN(testBodyContentLengthBinary);
-	RUN(testBodyContentLengthAllByteValues);
-	RUN(testBodyContentLengthMissingBytes);
-	RUN(testZeroContentLengthKeepsExtraBytes);
-	RUN(testBodyContentLengthLarge);
-
-	// limite de body
-	RUN(testDefaultLimitBoundary);
-	RUN(testCustomLimits);
-
-	// chunked
-	RUN(testChunkedAccepted);
-	RUN(testChunkedHeadersThenBody);
-	RUN(testChunkedPartialStates);
-	RUN(testChunkedByteByByte);
-	RUN(testChunkedExtraBytes);
-	RUN(testChunkedErrors);
-	RUN(testChunkedLimitErrors);
-	RUN(testChunkedSizeLineLimits);
-	RUN(testChunkedSizeOverflow);
-	RUN(testChunkedTrailerSizeLimits);
-	RUN(testChunkedManySmallChunks);
-	RUN(testChunkedLargeInPieces);
-
-	// transversais
-	RUN(testNulBytes);
-	RUN(testCompleteIsSticky);
-	RUN(testErrorIsSticky);
-	RUN(testPipelinedRequests);
-	RUN(testFragmentation);
-
-	std::cout << "\n" << g_passed << " passaram, " << g_failed << " falharam" << std::endl;
-
-	return g_failed == 0 ? 0 : 1;
-}
