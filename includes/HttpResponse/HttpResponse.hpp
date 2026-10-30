@@ -16,6 +16,7 @@ class HttpResponse {
 		void setBody(const std::string & body);
 
 		int getStatusCode() const;
+		std::string getBody() const;
 		
 		std::string serialize();
 

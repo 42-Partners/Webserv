@@ -30,8 +30,6 @@ class HttpRequest {
 
 		void feed( std::string & );
 
-		int getErrorCode() const;
-		ParsingState getState() const;
 		bool getKeepAlive() const;
 		const std::string& getMethod() const;
 		const std::string& getUri() const;

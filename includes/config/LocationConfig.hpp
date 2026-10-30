@@ -45,6 +45,7 @@ public:
 
     // Utilitário
     void addAllowedMethod(const std::string& method);
+    bool isMethodAllowed(const std::string& method) const;
 };
 
 #endif
