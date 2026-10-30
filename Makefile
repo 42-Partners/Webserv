@@ -67,10 +67,15 @@ re: fclean all
 
 TEST_REQUEST     := $(TEST_DIR)/test_request_line
 
-TEST_REQUEST_SRC := tests/request/parser.cpp \
+TEST_REQUEST_SRC := tests/main.cpp \
+					tests/request/parser.cpp \
+					tests/request/status_code.cpp \
 					src/HttpRequest/HttpRequest.cpp \
 					src/HttpRequest/RequestParser.cpp \
-					src/Utils/Utils.cpp
+					src/Utils/Utils.cpp \
+					src/HttpResponse/ErrorPage.cpp
+
+TEST_HEADERS     := $(wildcard $(HPP_DIR)/*/*.hpp tests/*.hpp tests/*/*.hpp)
 
 TEST_CPPFLAGS    := $(CPPFLAGS) -I$(HPP_DIR) -Isrc
 

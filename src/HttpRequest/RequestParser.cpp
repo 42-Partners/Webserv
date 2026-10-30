@@ -255,7 +255,7 @@ bool HttpRequest::finishHeaders() {
 		if ( !stringToSize( pos->second, 10, length ) )
 			return setError(STATUS_BAD_REQUEST);
 		if ( length > _maxBodySize )
-			return setError( STATUS_PAYLOAD_TOO_LARGE );
+			return setError( STATUS_CONTENT_TOO_LARGE );
 		_hasContentLength = true;
 		_contentLength = length;
 	}
@@ -360,7 +360,7 @@ bool HttpRequest::parseBodyChunked( std::string & buffer ) {
 
 	if ( _body.size() > _maxBodySize ||
 		 _maxBodySize - _body.size() < size )
-		return setError( STATUS_PAYLOAD_TOO_LARGE );
+		return setError( STATUS_CONTENT_TOO_LARGE );
 	
 	if ( size > 0 ) {
 		size_t start = pos + 2;

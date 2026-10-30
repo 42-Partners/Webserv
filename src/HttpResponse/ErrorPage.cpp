@@ -2,15 +2,20 @@
 
 #include <sstream>
 
-std::string reasonPhrase(int code) {
-	switch (code) {
+std::string reasonPhrase( int code ) {
+	switch ( code ) {
 		case STATUS_OK:						return "OK";
+		case STATUS_CREATED:				return "Created";
+		case STATUS_NO_CONTENT:				return "No Content";
+		case STATUS_MOVED_PERMANENTLY:		return "Moved Permanently";
+		case STATUS_FOUND:					return "Found";
 		case STATUS_BAD_REQUEST:			return "Bad Request";
 		case STATUS_FORBIDDEN:				return "Forbidden";
 		case STATUS_NOT_FOUND:				return "Not Found";
 		case STATUS_METHOD_NOT_ALLOWED:		return "Method Not Allowed";
+		case STATUS_REQUEST_TIMEOUT:		return "Request Timeout";
 		case STATUS_LENGTH_REQUIRED:		return "Length Required";
-		case STATUS_PAYLOAD_TOO_LARGE:		return "Content Too Large";
+		case STATUS_CONTENT_TOO_LARGE:		return "Content Too Large";
 		case STATUS_URI_TOO_LONG:			return "URI Too Long";
 		case STATUS_HEADERS_TOO_LARGE:		return "Request Header Fields Too Large";
 		case STATUS_INTERNAL_SERVER_ERROR:	return "Internal Server Error";
