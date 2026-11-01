@@ -35,7 +35,8 @@ static const StatusCase cases[] = {
 
 static const size_t caseCount = sizeof(cases) / sizeof(cases[0]);
 
-static void testEnumValues() {
+void testEnumValues()
+{
     for (size_t i = 0; i < caseCount; ++i) {
         std::ostringstream name;
         name << "Enum: " << cases[i].phrase
@@ -45,7 +46,8 @@ static void testEnumValues() {
     }
 }
 
-static void testReasonPhrases() {
+void testReasonPhrases()
+{
     for (size_t i = 0; i < caseCount; ++i) {
         std::ostringstream name;
         name << "reasonPhrase(" << cases[i].number
@@ -55,7 +57,8 @@ static void testReasonPhrases() {
     }
 }
 
-static void testNoCodeFallsBackToUnknown() {
+void testNoCodeFallsBackToUnknown()
+{
     for (size_t i = 0; i < caseCount; ++i) {
         std::ostringstream name;
         name << "reasonPhrase(" << cases[i].number
@@ -65,7 +68,8 @@ static void testNoCodeFallsBackToUnknown() {
     }
 }
 
-static void testUnknownCodes() {
+void testUnknownCodes()
+{
     const int unknown[] = { -1, 0, 99, 299, 418, 999 };
     const size_t count = sizeof(unknown) / sizeof(unknown[0]);
 
@@ -77,7 +81,8 @@ static void testUnknownCodes() {
     }
 }
 
-static void testDefaultErrorPage() {
+void testDefaultErrorPage()
+{
     for (size_t i = 0; i < caseCount; ++i) {
         if (cases[i].number < 400)
             continue;
@@ -97,7 +102,8 @@ static void testDefaultErrorPage() {
     }
 }
 
-static void testDefaultErrorPageStructure() {
+void testDefaultErrorPageStructure()
+{
     std::string page = defaultErrorPage(STATUS_NOT_FOUND);
 
     check(page.compare(0, 15, "<!DOCTYPE html>") == 0,
@@ -118,19 +124,10 @@ static void testDefaultErrorPageStructure() {
           "Pagina padrao: mesma saida em chamadas repetidas");
 }
 
-static void testDefaultErrorPageUnknownCode() {
+void testDefaultErrorPageUnknownCode()
+{
     std::string page = defaultErrorPage(999);
 
     check(page.find("<title>999 Unknown</title>") != std::string::npos,
           "Pagina padrao para codigo desconhecido: 999 Unknown");
-}
-
-void runStatusCodeTests() {
-    RUN(testEnumValues);
-    RUN(testReasonPhrases);
-    RUN(testNoCodeFallsBackToUnknown);
-    RUN(testUnknownCodes);
-    RUN(testDefaultErrorPage);
-    RUN(testDefaultErrorPageStructure);
-    RUN(testDefaultErrorPageUnknownCode);
 }

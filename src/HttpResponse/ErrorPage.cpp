@@ -27,9 +27,9 @@ std::string reasonPhrase( int code ) {
 	}
 }
 
-std::string defaultErrorPage( int code ) {
+std::string defaultErrorPage(int code) {
 	std::ostringstream oss;
-	oss << code << " " << reasonPhrase( code );
+	oss << code << " " << reasonPhrase(code);
 	std::string title = oss.str();
 
 	oss.str("");

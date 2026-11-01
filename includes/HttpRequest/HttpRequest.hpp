@@ -58,12 +58,12 @@ class HttpRequest {
 		size_t _contentLength;
 		size_t _maxBodySize;
 
-		std::string _method;
-		std::string _uri;
-		std::string _path;
-		std::string _queryString;
-		std::string _httpVersion;
-		std::string _body;
+		std::string                         _method;
+		std::string                         _uri;
+		std::string                         _path;
+		std::string                         _queryString;
+		std::string                         _httpVersion;
+		std::string                         _body;
 
 		std::map<std::string, std::string>  _headers;
 
