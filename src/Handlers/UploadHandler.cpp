@@ -1,6 +1,45 @@
 #include "Handlers/UploadHandler.hpp"
 #include "StatusCode/StatusCode.hpp"
 
+#include <cassert> // teste
+void testExtractBoundary() {
+    std::cout << "[Teste] Executando testExtractBoundary..." << std::endl;
+
+    // Cenário 1: Content-Type padrão enviado por navegadores com boundary e aspas
+    {
+        std::string ct = "multipart/form-data; boundary=\"----WebKitFormBoundary7MA4YWxkTrZu0gW\"";
+        std::string boundary = extractBoundary(ct);
+        assert(boundary == "----WebKitFormBoundary7MA4YWxkTrZu0gW");
+        std::cout << "[PASS] Teste 1: Boundary com aspas extraído com sucesso." << std::endl;
+    }
+
+    // Cenário 2: Content-Type sem aspas no boundary
+    {
+        std::string ct = "multipart/form-data; boundary=------------------------boundary123";
+        std::string boundary = extractBoundary(ct);
+        assert(boundary == "------------------------boundary123");
+        std::cout << "[PASS] Teste 2: Boundary sem aspas extraído com sucesso." << std::endl;
+    }
+
+    // Cenário 3: Boundary no meio ou com espaços extras
+    {
+        std::string ct = "text/html; charset=utf-8;   boundary=my-custom-boundary   ";
+        std::string boundary = extractBoundary(ct);
+        assert(boundary == "my-custom-boundary");
+        std::cout << "[PASS] Teste 3: Boundary com espaçamentos extras tratado com sucesso." << std::endl;
+    }
+
+    // Cenário 4: Content-Type sem a tag boundary (deve retornar vazio)
+    {
+        std::string ct = "application/json";
+        std::string boundary = extractBoundary(ct);
+        assert(boundary.empty());
+        std::cout << "[PASS] Teste 4: Content-Type sem boundary retornou vazio corretamente." << std::endl;
+    }
+
+    std::cout << "[Teste] Todos os testes de extractBoundary passaram!\n" << std::endl;
+}
+
 HttpResponse handlePost(const HttpRequest &req, const LocationConfig &loc) {
     HttpResponse response;
     if (!loc.isMethodAllowed("POST")) {
@@ -76,4 +115,19 @@ bool parseMultipart(const std::string& body, const std::string& boundary, const 
 
     std::cout << "[Sucesso] Arquivo extraído e salvo: " << fullPath << std::endl;
     return true;
+}
+
+std::string extractBoundary(const std::string& contentType) {
+    std::vector<std::string> parts = split(contentType, ";");
+    for (size_t i = 0; i < parts.size(); ++i) {
+        std::string item = trim(parts[i]);
+        if (item.find("boundary=") == 0) {
+            std::string boundary = item.substr(9);
+            if (boundary.size() >= 2 && boundary[0] == '"' && boundary[boundary.size() - 1] == '"') {
+                boundary = boundary.substr(1, boundary.size() - 2);
+            }
+            return trim(boundary);
+        }
+    }
+    return "";
 }
