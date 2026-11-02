@@ -14,6 +14,8 @@ int main(int argc, char** argv) {
 	runParserTests();
 	runStatusCodeTests();
 	runErrorPageTests();
+	runResolveLocationTests();
+	runResolveFilePathTests();
 
 	std::cout << "\n" << g_passed << " passaram, " << g_failed << " falharam" << std::endl;
 

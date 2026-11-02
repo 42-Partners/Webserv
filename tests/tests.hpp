@@ -20,4 +20,10 @@ void runStatusCodeTests();
 // error pages
 void runErrorPageTests();
 
+// location
+void runResolveLocationTests();
+
+// file path
+void runResolveFilePathTests();
+
 #endif
