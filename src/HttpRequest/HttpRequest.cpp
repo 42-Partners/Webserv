@@ -40,8 +40,7 @@ const std::string& HttpRequest::getBody() const { return(this->_body); }
 
 const std::map<std::string, std::string>& HttpRequest::getHeaders() const { return(this->_headers); }
 
-std::string HttpRequest::getHeader(const std::string& key) const
-{
+std::string HttpRequest::getHeader(const std::string& key) const {
 	const_map_iterator it = this->_headers.find(key);
 
     if (it != this->_headers.end()) {
@@ -51,8 +50,7 @@ std::string HttpRequest::getHeader(const std::string& key) const
     return "";
 }
 
-bool HttpRequest::hasHeader(const std::string& key) const
-{
+bool HttpRequest::hasHeader(const std::string& key) const {
 	const_map_iterator it = this->_headers.find(key);
 
     if (it != this->_headers.end()) {
@@ -62,17 +60,19 @@ bool HttpRequest::hasHeader(const std::string& key) const
     return false;
 }
 
-void HttpRequest::clear()
-{
+void HttpRequest::clear() {
+    this->_errorCode = 0;
+    this->_state = PARSING_REQUEST_LINE;
+    this->_keepAlive = true;
+    this->_isChunked = false;
+    this->_hasContentLength = false;
+    this->_contentLength = 0;
+    this->_maxBodySize = DEFAULT_MAX_BODY; // e se vier do construtor?
 	this->_method.clear();
 	this->_uri.clear();
 	this->_path.clear();
 	this->_queryString.clear();
 	this->_httpVersion.clear();
+    this->_body.clear();
 	this->_headers.clear();
-	this->_body.clear();
-	this->_state = PARSING_REQUEST_LINE;
-	this->_errorCode = 0;
-	this->_contentLength = 0;
-	this->_isChunked = false;
 }
