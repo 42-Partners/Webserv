@@ -14,7 +14,6 @@ static bool isValidHost( const std::string & s );
 
 // consome do buffer só o que processa e deixa a sobra para a próxima requisição;
 void HttpRequest::feed( std::string & buffer ) {
-
 	while (_state != REQUEST_COMPLETE && _state != REQUEST_ERROR) {
 
 		bool advanced = false;

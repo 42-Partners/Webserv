@@ -1,4 +1,5 @@
 #include "config/LocationConfig.hpp"
+#include "StatusCode/StatusCode.hpp"
 #include "HttpResponse/ErrorPage.hpp"
 #include "RequestProcessor/RequestProcessor.hpp"
 
@@ -7,7 +8,8 @@
 
 static bool loadErrorPage( const std::string & path, std::string & page );
 static HttpResponse resolveErrorPage( int errorCode, const ServerConfig & config );
-static LocationConfig * resolveLocation( const std::string & path, const ServerConfig & config );
+static const LocationConfig * resolveLocation( const std::string & requestPath, const ServerConfig & config );
+static std::string resolveFilePath( HttpResponse & response, const std::string & requestPath, const LocationConfig & location );
 
 HttpResponse process( const HttpRequest & request, const ServerConfig & config ) { 
 	HttpResponse response;
@@ -16,12 +18,15 @@ HttpResponse process( const HttpRequest & request, const ServerConfig & config )
 		response = resolveErrorPage( request.getErrorCode(), config );
 
 	else if ( request.getState() == HttpRequest::REQUEST_COMPLETE ) {
-		LocationConfig * location = resolveLocation( request.getPath(), config );
+		const LocationConfig * location = resolveLocation( request.getPath(), config );
 		if  ( !location )
 			response = resolveErrorPage( 404, config );
-		// criar response
-		else if (response.isError() )
-			response = resolveErrorPage( response.getStatusCode(), config );
+		else {
+			std::string file = resolveFilePath( response, request.getPath(), *location );
+			// HttpResponse buildResponse()
+			if (response.isError() )
+				response = resolveErrorPage( response.getStatusCode(), config );
+		}
 	}
 
 	return response;
@@ -59,8 +64,58 @@ static HttpResponse resolveErrorPage( int errorCode, const ServerConfig & config
 	return response;
 }
 
-static LocationConfig * resolveLocation( const std::string & path, const ServerConfig & config ) {
-	(void)path;
-	(void)config;
-	return NULL;
+static const LocationConfig * resolveLocation( const std::string & requestPath, const ServerConfig & config ) {
+	const LocationConfig * location = NULL;
+
+	const std::vector<LocationConfig> & locConfig = config.getLocations();
+
+	size_t bestSize = 0;
+	for (size_t i = 0; i < locConfig.size(); i++ ) {
+		const std::string & locPath = locConfig[i].getPath();
+
+		if ( locPath.empty() ) continue;
+
+		if ( requestPath.size() < locPath.size() ) continue;
+
+		size_t size = locPath.size();
+
+		if ( requestPath.compare( 0, size, locPath ) ) continue;
+
+		if ( locPath[size-1] != '/' &&
+			 requestPath.size() != size &&
+			 requestPath[size] != '/' ) continue;
+
+		if ( !location || size > bestSize ) {
+			bestSize = size;
+			location = &locConfig[i];
+		}
+	}
+
+	return location;
+}
+
+static std::string resolveFilePath( HttpResponse & response, const std::string & requestPath, const LocationConfig & location ) {
+	const std::string leftover = requestPath.substr( location.getPath().size() );
+	const std::string & root = location.getRoot();
+
+	if ( root.empty() ) {
+		response.setStatus( STATUS_INTERNAL_SERVER_ERROR );
+		return "";
+	}
+
+	if ( leftover.empty() )
+		return root;
+
+	bool rootEndsWithSlash = root[root.size() - 1] == '/';
+	bool leftoverStartsWithSlash = leftover[0] == '/';
+
+	std::string filePath;
+	if ( !rootEndsWithSlash && !leftoverStartsWithSlash )
+		filePath = root + "/" + leftover;
+	else if ( rootEndsWithSlash && leftoverStartsWithSlash )
+		filePath = root + leftover.substr( 1 );
+	else 
+		filePath = root + leftover;
+
+	return filePath;
 }

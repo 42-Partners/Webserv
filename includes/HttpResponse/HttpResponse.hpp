@@ -8,25 +8,21 @@ class HttpResponse {
 	public:
 		HttpResponse();
 		~HttpResponse();
-
-		bool isError();
 		
 		void setStatus( int );
 		void setHeader( const std::string &, const std::string & );
 		void setBody( const std::string & );
 
+		bool isError();
+		bool shouldClose() const;
 		int getStatusCode() const;
-		std::string getBody() const;
-		
+		std::string getBody() const;		
 		std::string serialize();
-
-		void clear(); // armeneze: talves não seja necessario, mas deixa ai ate segunda ordem
 
 	private:
 		int _statusCode;
-
+		bool _closeConnection;
 		std::map<std::string, std::string> _headers;
-		
 		std::string _body;
 };
 
