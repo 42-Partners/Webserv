@@ -68,11 +68,12 @@ TEST_REQUEST     := $(TEST_DIR)/test_request_line
 
 TEST_REQUEST_SRC := tests/main.cpp \
 					tests/request/parser.cpp \
+					tests/request/processor.cpp \
 					tests/request/status_code.cpp \
 					src/HttpRequest/HttpRequest.cpp \
 					src/HttpRequest/RequestParser.cpp \
-					src/Utils/Utils.cpp \
-					src/HttpResponse/ErrorPage.cpp
+					src/HttpResponse/ErrorPage.cpp \
+					src/Utils/Utils.cpp
 
 TEST_HEADERS     := $(wildcard $(HPP_DIR)/*/*.hpp tests/*.hpp tests/*/*.hpp)
 
