@@ -20,8 +20,6 @@ class HttpResponse {
 		
 		std::string serialize();
 
-		void clear(); // armeneze: talves não seja necessario, mas deixa ai ate segunda ordem
-
 	private:
 		int _statusCode;
 

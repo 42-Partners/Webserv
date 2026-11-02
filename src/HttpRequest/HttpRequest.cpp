@@ -43,9 +43,7 @@ const std::map<std::string, std::string>& HttpRequest::getHeaders() const { retu
 std::string HttpRequest::getHeader(const std::string& key) const {
 	const_map_iterator it = this->_headers.find(key);
 
-	if (it != this->_headers.end()) {
-		return it->second;
-	}
+	if (it != this->_headers.end()) { return it->second; }
 
 	return "";
 }
@@ -53,9 +51,7 @@ std::string HttpRequest::getHeader(const std::string& key) const {
 bool HttpRequest::hasHeader(const std::string& key) const {
 	const_map_iterator it = this->_headers.find(key);
 
-	if (it != this->_headers.end()) {
-		return true;
-	}
+	if (it != this->_headers.end()) { return true; }
 
 	return false;
 }

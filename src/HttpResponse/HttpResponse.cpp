@@ -17,14 +17,4 @@ int HttpResponse::getStatusCode() const { return ( this->_statusCode ); }
 std::string HttpResponse::getBody() const { return ( this->_body ); }
 
 
-std::string HttpResponse::serialize()
-{
-	return ( std::string() );
-}
-
-void HttpResponse::clear()
-{
-	this->_statusCode = 0;
-	this->_headers.clear();
-	this->_body.clear();
-}
+std::string HttpResponse::serialize() { return ( std::string() ); }
