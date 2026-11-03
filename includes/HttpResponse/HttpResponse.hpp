@@ -7,13 +7,13 @@
 class HttpResponse {
 	public:
 		HttpResponse();
+		HttpResponse( const HttpResponse& src ); // necessario?
+		HttpResponse& operator=(  const HttpResponse& src  ); // necessario?
 		~HttpResponse();
 
-		bool isError();
-		
-		void setStatus( int );
-		void setHeader( const std::string &, const std::string & );
-		void setBody( const std::string & );
+		void setStatus(int status);
+		void setHeader(const std::string & key, const std::string & value);
+		void setBody(const std::string & body);
 
 		int getStatusCode() const;
 		std::string getBody() const;
@@ -24,10 +24,9 @@ class HttpResponse {
 
 	private:
 		int _statusCode;
-
 		std::map<std::string, std::string> _headers;
-		
 		std::string _body;
+
 };
 
 #endif

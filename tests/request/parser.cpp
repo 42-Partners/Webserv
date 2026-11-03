@@ -30,6 +30,10 @@ const size_t kHuge           = 10000;
 // Infraestrutura
 // ===========================================================================
 
+int g_passed = 0;
+int g_failed = 0;
+bool g_verbose = false;
+
 void check(bool ok, const std::string& name) {
 	if (ok) {
 		++g_passed;
@@ -1857,83 +1861,3 @@ void testFragmentation() {
 
 // ===========================================================================
 
-void runParserTests() {
-
-	RUN(testInitialState);
-
-	// request line
-	RUN(testValidRequest);
-	RUN(testSupportedMethods);
-	RUN(testRequestLineErrors);
-	RUN(testUriErrors);
-	RUN(testUriAccepted);
-	RUN(testQueryString);
-	RUN(testHttpVersions);
-	RUN(testIncompleteLine);
-	RUN(testIncompleteLineCrOnly);
-	RUN(testBareLfDoesNotTerminate);
-	RUN(testRequestLineInPieces);
-	RUN(testAdditionalData);
-	RUN(testEmptyLinesBeforeRequest);
-	RUN(testRequestLineLengthBoundary);
-
-	// headers
-	RUN(testValidHeaders);
-	RUN(testHeaderErrors);
-	RUN(testHeadersAccepted);
-	RUN(testHostAccepted);
-	RUN(testHeaderNameIsCaseInsensitive);
-	RUN(testConnectionHeader);
-	RUN(testHeadersInPieces);
-	RUN(testHeadersByteByByte);
-	RUN(testHeadersWithoutTerminatorWaits);
-	RUN(testHeaderCountBoundary);
-	RUN(testHeadersSizeBoundary);
-
-	// Content-Length / Transfer-Encoding
-	RUN(testContentLengthErrors);
-	RUN(testContentLengthOverflow);
-	RUN(testContentLengthSizeMax);
-	RUN(testContentLengthHeaderOnly);
-	RUN(testTransferEncodingValues);
-	RUN(testTransferEncodingOnGet);
-
-	// body com Content-Length
-	RUN(testNoBodyKeepsExtraBytes);
-	RUN(testBodyContentLengthComplete);
-	RUN(testBodyContentLengthLeadingZeros);
-	RUN(testBodyContentLengthHeadersThenBody);
-	RUN(testBodyContentLengthInPieces);
-	RUN(testBodyContentLengthByteByByte);
-	RUN(testBodyContentLengthExtraBytes);
-	RUN(testBodyContentLengthBinary);
-	RUN(testBodyContentLengthAllByteValues);
-	RUN(testBodyContentLengthMissingBytes);
-	RUN(testZeroContentLengthKeepsExtraBytes);
-	RUN(testBodyContentLengthLarge);
-
-	// limite de body
-	RUN(testDefaultLimitBoundary);
-	RUN(testCustomLimits);
-
-	// chunked
-	RUN(testChunkedAccepted);
-	RUN(testChunkedHeadersThenBody);
-	RUN(testChunkedPartialStates);
-	RUN(testChunkedByteByByte);
-	RUN(testChunkedExtraBytes);
-	RUN(testChunkedErrors);
-	RUN(testChunkedLimitErrors);
-	RUN(testChunkedSizeLineLimits);
-	RUN(testChunkedSizeOverflow);
-	RUN(testChunkedTrailerSizeLimits);
-	RUN(testChunkedManySmallChunks);
-	RUN(testChunkedLargeInPieces);
-
-	// transversais
-	RUN(testNulBytes);
-	RUN(testCompleteIsSticky);
-	RUN(testErrorIsSticky);
-	RUN(testPipelinedRequests);
-	RUN(testFragmentation);
-}

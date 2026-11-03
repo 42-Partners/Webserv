@@ -10,8 +10,8 @@ enum StatusCode {
     STATUS_MOVED_PERMANENTLY		= 301,
 	STATUS_FOUND					= 302,
     STATUS_BAD_REQUEST				= 400,
-    STATUS_FORBIDDEN				= 403,
-    STATUS_NOT_FOUND				= 404,
+    STATUS_FORBIDDEN				= 403, // nao usado
+    STATUS_NOT_FOUND				= 404, // nao usado
     STATUS_METHOD_NOT_ALLOWED		= 405,
     STATUS_REQUEST_TIMEOUT			= 408,
     STATUS_LENGTH_REQUIRED			= 411, // nao usado
