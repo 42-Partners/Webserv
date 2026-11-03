@@ -103,7 +103,6 @@ void Connection::resetForNextRequest() {
     }
     this->_readBuffer.clear();
     this->_writeBuffer.clear();
-    this->_httpResponse.clear();
     this->_connectionState = READING_HEADER;
     this->updateLastActivity();
 }

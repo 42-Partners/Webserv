@@ -1,10 +1,10 @@
 #ifndef REQUESTPROCESSOR_HPP
 #define REQUESTPROCESSOR_HPP
 
-#include "Connection/Connection.hpp"
 #include "config/ServerConfig.hpp"
 #include "HttpRequest/HttpRequest.hpp"
+#include "HttpResponse/HttpResponse.hpp"
 
-void process(Connection & connection, ServerConfig & config);
+HttpResponse process( const HttpRequest & request, const ServerConfig & config );
 
 #endif
