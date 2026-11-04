@@ -5,6 +5,7 @@
 #include "HttpRequest.hpp"
 #include "LocationConfig.hpp"
 
+std::string getMimeType(const std::string& path);
 HttpResponse handleGet(const HttpRequest & request, const LocationConfig & loc);
 HttpResponse handleDelete(const HttpRequest & request, const LocationConfig & loc);
 
