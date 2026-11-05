@@ -8,16 +8,19 @@ class HttpResponse {
 	public:
 		HttpResponse();
 		~HttpResponse();
+
+		bool isError() const;
+		bool shouldClose() const;
+
+		int getStatusCode() const;
+		const std::string & getBody() const;
 		
 		void setStatus( int );
+		void setConnectionState( bool );
 		void setHeader( const std::string &, const std::string & );
 		void setBody( const std::string & );
 
-		bool isError();
-		bool shouldClose() const;
-		int getStatusCode() const;
-		std::string getBody() const;		
-		std::string serialize();
+		const std::string serialize();
 
 	private:
 		int _statusCode;

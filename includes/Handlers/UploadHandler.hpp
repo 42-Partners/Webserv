@@ -4,12 +4,13 @@
 #include "HttpResponse/HttpResponse.hpp"
 #include "HttpRequest/HttpRequest.hpp"
 #include "config/LocationConfig.hpp"
+#include "config/ServerConfig.hpp"
 #include "Utils/Utils.hpp"
 #include <fstream>
 #include <sys/stat.h>
 #include <sys/types.h>
 
-HttpResponse handlePost(const HttpRequest &req, const LocationConfig &loc);
+HttpResponse handlePost(const HttpRequest &req, const ServerConfig & config, const LocationConfig &loc);
 
 bool parseMultipart(const std::string& body, const std::string& boundary, const std::string& uploadStore);
 

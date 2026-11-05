@@ -17,13 +17,10 @@ void runParserTests();
 // status codes
 void runStatusCodeTests();
 
-// error pages
-void runErrorPageTests();
-
 // location
 void runResolveLocationTests();
 
-// file path
-void runResolveFilePathTests();
+// route
+void runRouteTests();
 
 #endif
