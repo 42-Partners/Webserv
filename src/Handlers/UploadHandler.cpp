@@ -1,8 +1,9 @@
 #include "Handlers/UploadHandler.hpp"
 #include "StatusCode/StatusCode.hpp"
 
-HttpResponse handlePost(const HttpRequest &req, const LocationConfig &loc) {
+HttpResponse handlePost(const HttpRequest &req, const ServerConfig & config, const LocationConfig &loc) {
     HttpResponse response;
+    (void)config;
     if (!loc.isMethodAllowed("POST")) {
         response.setStatus(STATUS_METHOD_NOT_ALLOWED); // 405
         response.setBody("Error: POST method not allowed for this route.");

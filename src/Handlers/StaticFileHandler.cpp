@@ -1,8 +1,10 @@
-#include "HttpRequest.hpp"
-#include "HttpResponse.hpp"
-#include "LocationConfig.hpp"
+#include "Handlers/StaticFileHandler.hpp"
+#include "HttpRequest/HttpRequest.hpp"
+#include "HttpResponse/HttpResponse.hpp"
+#include "config/LocationConfig.hpp"
 #include "StatusCode/StatusCode.hpp"
 #include "Utils/Utils.hpp"
+
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h>
@@ -26,9 +28,9 @@ std::string getMimeType(const std::string& path) {
     return "application/octet-stream";
 }
 
-HttpResponse handleGet(const HttpRequest & request, const LocationConfig & loc) {
+HttpResponse handleGet(const HttpRequest & request, const ServerConfig & config, const LocationConfig & loc) {
     HttpResponse response;
-
+    (void)config;
     if (!loc.isMethodAllowed("GET")) {
         response.setStatus(STATUS_METHOD_NOT_ALLOWED); // 405
         response.setBody("Error: GET method not allowed for this route.");
@@ -73,9 +75,9 @@ HttpResponse handleGet(const HttpRequest & request, const LocationConfig & loc) 
     return response;
 }
 
-HttpResponse handleDelete(const HttpRequest & request, const LocationConfig & loc) {
+HttpResponse handleDelete(const HttpRequest & request, const ServerConfig & config, const LocationConfig & loc) {
     HttpResponse response;
-
+    (void)config;
     if (!loc.isMethodAllowed("DELETE")) {
         response.setStatus(STATUS_METHOD_NOT_ALLOWED); // 405
         response.setBody("Error: DELETE method not allowed for this route.");
@@ -109,3 +111,29 @@ HttpResponse handleDelete(const HttpRequest & request, const LocationConfig & lo
     return response;
 }
 
+/*
+
+// assume path já decodificado e sem ..e assume root nao vazio
+
+static std::string resolveFilePath( const LocationConfig & loc, const std::string & requestPath ) {
+	const std::string leftover = requestPath.substr( loc.getPath().size() );
+	const std::string & root = loc.getRoot();
+
+	if ( leftover.empty() )
+		return root;
+
+	bool rootEndsWithSlash = root[root.size() - 1] == '/';
+	bool leftoverStartsWithSlash = leftover[0] == '/';
+
+	std::string filePath;
+	if ( !rootEndsWithSlash && !leftoverStartsWithSlash )
+		filePath = root + "/" + leftover;
+	else if ( rootEndsWithSlash && leftoverStartsWithSlash )
+		filePath = root + leftover.substr( 1 );
+	else 
+		filePath = root + leftover;
+
+	return filePath;
+}
+
+*/
