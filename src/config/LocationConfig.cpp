@@ -42,6 +42,17 @@ LocationConfig::~LocationConfig() {
 // Getters
 const std::string& LocationConfig::getPath() const { return this->_path; }
 const std::vector<std::string>& LocationConfig::getAllowedMethods() const { return this->_allowedMethods; }
+std::string LocationConfig::getAllowedMethodsString() const {
+    std::string allowedMethods;
+
+    for ( size_t i = 0; i < _allowedMethods.size(); i++ ) {
+        if ( i > 0 )
+            allowedMethods += ", ";
+        allowedMethods += _allowedMethods[i];
+    }
+
+    return allowedMethods;
+}
 const std::string& LocationConfig::getRoot() const { return this->_root; }
 bool LocationConfig::getAutoindex() const { return this->_autoindex; }
 const std::string& LocationConfig::getIndex() const { return this->_index; }
