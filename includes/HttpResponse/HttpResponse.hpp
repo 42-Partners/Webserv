@@ -20,7 +20,7 @@ class HttpResponse {
 		void setHeader( const std::string &, const std::string & );
 		void setBody( const std::string & );
 
-		const std::string serialize();
+		std::string serialize() const;
 
 	private:
 		int _statusCode;
