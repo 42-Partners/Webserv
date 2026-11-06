@@ -25,6 +25,7 @@ SRC			:=	src/main.cpp \
         		src/ServerManager/ServerManager.cpp \
 				src/Connection/Connection.cpp \
 				src/Handlers/ErrorHandler.cpp  \
+				src/Handlers/RedirectHandler.cpp \
 				src/Handlers/StaticFileHandler.cpp  \
 				src/Handlers/UploadHandler.cpp  \
 				src/HttpRequest/HttpRequest.cpp  \
@@ -76,6 +77,7 @@ TEST_REQUEST_SRC := tests/main.cpp \
 					src/config/ServerConfig.cpp \
 					src/config/LocationConfig.cpp \
 					src/Handlers/ErrorHandler.cpp \
+					src/Handlers/RedirectHandler.cpp \
 					src/Handlers/StaticFileHandler.cpp \
 					src/Handlers/UploadHandler.cpp \
 					src/HttpRequest/HttpRequest.cpp \
