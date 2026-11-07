@@ -111,29 +111,24 @@ HttpResponse handleDelete(const HttpRequest & request, const ServerConfig & conf
     return response;
 }
 
-/*
 
-// assume path já decodificado e sem ..e assume root nao vazio
+// static std::string resolveFilePath( const LocationConfig & loc, const std::string & requestPath ) {
+// 	const std::string leftover = requestPath.substr( loc.getPath().size() );
+// 	const std::string & root = loc.getRoot();
 
-static std::string resolveFilePath( const LocationConfig & loc, const std::string & requestPath ) {
-	const std::string leftover = requestPath.substr( loc.getPath().size() );
-	const std::string & root = loc.getRoot();
+// 	if ( leftover.empty() )
+// 		return root;
 
-	if ( leftover.empty() )
-		return root;
+// 	bool rootEndsWithSlash = root[root.size() - 1] == '/';
+// 	bool leftoverStartsWithSlash = leftover[0] == '/';
 
-	bool rootEndsWithSlash = root[root.size() - 1] == '/';
-	bool leftoverStartsWithSlash = leftover[0] == '/';
+// 	std::string filePath;
+// 	if ( !rootEndsWithSlash && !leftoverStartsWithSlash )
+// 		filePath = root + "/" + leftover;
+// 	else if ( rootEndsWithSlash && leftoverStartsWithSlash )
+// 		filePath = root + leftover.substr( 1 );
+// 	else 
+// 		filePath = root + leftover;
 
-	std::string filePath;
-	if ( !rootEndsWithSlash && !leftoverStartsWithSlash )
-		filePath = root + "/" + leftover;
-	else if ( rootEndsWithSlash && leftoverStartsWithSlash )
-		filePath = root + leftover.substr( 1 );
-	else 
-		filePath = root + leftover;
-
-	return filePath;
-}
-
-*/
+// 	return filePath;
+// }
