@@ -3,6 +3,7 @@
 
 HttpResponse handlePost(const HttpRequest &req, const ServerConfig & config, const LocationConfig &loc) {
     HttpResponse response;
+    std::cout << "[INFO] handlePost: " << req.getPath() << std::endl; // debug test retirar
     (void)config;
     if (!loc.isMethodAllowed("POST")) {
         response.setStatus(STATUS_METHOD_NOT_ALLOWED); // 405
@@ -23,6 +24,7 @@ HttpResponse handlePost(const HttpRequest &req, const ServerConfig & config, con
         return response;
     }
 
+    parseMultipart(req.getBody(), extractBoundary(contentType), loc.getUploadPath());
     response.setStatus(STATUS_CREATED); // 201
     response.setBody("Upload validations passed successfully!");
     return response;
