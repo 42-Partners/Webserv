@@ -3,7 +3,6 @@
 #include "config/LocationConfig.hpp"
 #include <iostream>
 #include <vector>
-#include "Handlers/UploadHandler.hpp"
 
 std::vector<ServerConfig> createMockConfigs() {
     std::vector<ServerConfig> configs;

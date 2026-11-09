@@ -24,6 +24,8 @@ SRC			:=	src/main.cpp \
 				src/config/ServerConfig.cpp \
         		src/ServerManager/ServerManager.cpp \
 				src/Connection/Connection.cpp \
+				src/Handlers/ErrorHandler.cpp  \
+				src/Handlers/StaticFileHandler.cpp  \
 				src/Handlers/UploadHandler.cpp  \
 				src/HttpRequest/HttpRequest.cpp  \
 				src/HttpRequest/RequestParser.cpp  \
@@ -67,12 +69,20 @@ re: fclean all
 TEST_REQUEST     := $(TEST_DIR)/test_request_line
 
 TEST_REQUEST_SRC := tests/main.cpp \
+					tests/request/location.cpp \
 					tests/request/parser.cpp \
+					tests/request/route.cpp \
 					tests/request/status_code.cpp \
+					src/config/ServerConfig.cpp \
+					src/config/LocationConfig.cpp \
+					src/Handlers/ErrorHandler.cpp \
+					src/Handlers/StaticFileHandler.cpp \
+					src/Handlers/UploadHandler.cpp \
 					src/HttpRequest/HttpRequest.cpp \
 					src/HttpRequest/RequestParser.cpp \
-					src/Utils/Utils.cpp \
-					src/HttpResponse/ErrorPage.cpp
+					src/HttpResponse/ErrorPage.cpp \
+					src/HttpResponse/HttpResponse.cpp \
+					src/Utils/Utils.cpp
 
 TEST_HEADERS     := $(wildcard $(HPP_DIR)/*/*.hpp tests/*.hpp tests/*/*.hpp)
 

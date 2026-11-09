@@ -25,6 +25,7 @@ public:
     // Getters
     const std::string&                  getPath() const;
     const std::vector<std::string>&     getAllowedMethods() const;
+    std::string                         getAllowedMethodsString() const;
     const std::string&                  getRoot() const;
     bool                                getAutoindex() const;
     const std::string&                  getIndex() const;

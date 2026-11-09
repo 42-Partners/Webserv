@@ -1,65 +1,24 @@
 #include "HttpResponse/HttpResponse.hpp"
+#include "Utils/Utils.hpp"
 
-HttpResponse::HttpResponse()
-	: _statusCode(0)
-{
-}
+HttpResponse::HttpResponse() : _statusCode(0), _closeConnection(false) { }
 
-HttpResponse::HttpResponse(const HttpResponse& src)
-	: _statusCode(src._statusCode),
-	  _headers(src._headers),
-	  _body(src._body)
-{
-}
+HttpResponse::~HttpResponse() { }
 
-HttpResponse& HttpResponse::operator=(const HttpResponse& src)
-{
-	if (this != &src)
-	{
-		this->_statusCode = src._statusCode;
-		this->_headers = src._headers;
-		this->_body = src._body;
-	}
-	return (*this);
-}
+bool HttpResponse::isError() const { return ( _statusCode >= 400 && _statusCode <= 599); }
 
-HttpResponse::~HttpResponse()
-{
-}
+bool HttpResponse::shouldClose() const { return this->_closeConnection; }
 
-void HttpResponse::setStatus(int status)
-{
-	this->_statusCode = status;
-}
+int HttpResponse::getStatusCode() const { return ( this->_statusCode ); }
 
-void HttpResponse::setHeader(const std::string& key, const std::string& value)
-{
-	this->_headers[key] = value;
-}
+const std::string & HttpResponse::getBody() const { return ( this->_body ); }
 
-void HttpResponse::setBody(const std::string& body)
-{
-	this->_body = body;
-}
+void HttpResponse::setStatus( int status ) { this->_statusCode = status; }
 
-int HttpResponse::getStatusCode() const
-{
-	return (this->_statusCode);
-}
+void HttpResponse::setConnectionState( bool state ) { this->_closeConnection = state; }
 
-std::string HttpResponse::getBody() const {
-	return (this->_body);
-}
+void HttpResponse::setHeader( const std::string& key, const std::string& value ) { this->_headers[toLower(key)] = value; }
 
+void HttpResponse::setBody( const std::string& body ) { this->_body = body; }
 
-std::string HttpResponse::serialize()
-{
-	return (std::string());
-}
-
-void HttpResponse::clear()
-{
-	this->_statusCode = 0;
-	this->_headers.clear();
-	this->_body.clear();
-}
+const std::string HttpResponse::serialize() { return ( std::string() ); }

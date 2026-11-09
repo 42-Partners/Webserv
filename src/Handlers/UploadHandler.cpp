@@ -1,8 +1,9 @@
 #include "Handlers/UploadHandler.hpp"
 #include "StatusCode/StatusCode.hpp"
 
-HttpResponse handlePost(const HttpRequest &req, const LocationConfig &loc) {
+HttpResponse handlePost(const HttpRequest &req, const ServerConfig & config, const LocationConfig &loc) {
     HttpResponse response;
+    (void)config;
     if (!loc.isMethodAllowed("POST")) {
         response.setStatus(STATUS_METHOD_NOT_ALLOWED); // 405
         response.setBody("Error: POST method not allowed for this route.");
@@ -76,4 +77,20 @@ bool parseMultipart(const std::string& body, const std::string& boundary, const 
 
     std::cout << "[Sucesso] Arquivo extraído e salvo: " << fullPath << std::endl;
     return true;
+}
+
+std::string extractBoundary(const std::string& contentType) {
+    std::vector<std::string> parts = split(contentType, ";");
+
+    for (size_t i = 0; i < parts.size(); ++i) {
+        std::string item = trim(parts[i]);
+        if (item.find("boundary=") == 0) {
+            std::string boundary = item.substr(9);
+            if (boundary.size() >= 2 && boundary[0] == '"' && boundary[boundary.size() - 1] == '"') {
+                boundary = boundary.substr(1, boundary.size() - 2); 
+            }
+            return trim(boundary);
+        }
+    }
+    return "";
 }

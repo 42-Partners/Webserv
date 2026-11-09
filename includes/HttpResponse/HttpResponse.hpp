@@ -7,26 +7,26 @@
 class HttpResponse {
 	public:
 		HttpResponse();
-		HttpResponse( const HttpResponse& src ); // necessario?
-		HttpResponse& operator=(  const HttpResponse& src  ); // necessario?
 		~HttpResponse();
 
-		void setStatus(int status);
-		void setHeader(const std::string & key, const std::string & value);
-		void setBody(const std::string & body);
+		bool isError() const;
+		bool shouldClose() const;
 
 		int getStatusCode() const;
-		std::string getBody() const;
+		const std::string & getBody() const;
 		
-		std::string serialize();
+		void setStatus( int );
+		void setConnectionState( bool );
+		void setHeader( const std::string &, const std::string & );
+		void setBody( const std::string & );
 
-		void clear(); // armeneze: talves não seja necessario, mas deixa ai ate segunda ordem
+		const std::string serialize();
 
 	private:
 		int _statusCode;
+		bool _closeConnection;
 		std::map<std::string, std::string> _headers;
 		std::string _body;
-
 };
 
 #endif
