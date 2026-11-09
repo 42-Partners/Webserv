@@ -131,33 +131,33 @@ void ServerManager::run() {
                 continue;
             }
 			for (size_t i = 0; i < _pollFds.size(); ++i) {
-			int fd = _pollFds[i].fd;
-			short revents = _pollFds[i].revents;
+				int fd = _pollFds[i].fd;
+				short revents = _pollFds[i].revents;
 
-			if (revents == 0) continue;
+				if (revents == 0) continue;
 
-			if (_isListeningSocket(fd)) {
-				if (revents & POLLIN) {
-					_acceptNewConnection(fd);
-				}
-			} else {
-				if (revents & (POLLHUP | POLLERR)) {
-					std::cout << "entrou aqui POLLHUP/POLLERR" << std::endl;
-					_closeConnection(fd, i);
-					--i;
-					continue;
-				}
-				if (revents & POLLIN) {
-					std::cout << "entrou aqui POLLIN" << std::endl;
-					_handleConnectionRead(fd, i);
-				} 
-				// Trata escrita
-				if (revents & POLLOUT) {
-					std::cout << "entrou aqui POLLOUT" << std::endl;
-					_handleConnectionWrite(fd, i);
+				if (_isListeningSocket(fd)) {
+					if (revents & POLLIN) {
+						_acceptNewConnection(fd);
+					}
+				} else {
+					if (revents & (POLLHUP | POLLERR)) {
+						std::cout << "entrou aqui POLLHUP/POLLERR" << std::endl;
+						_closeConnection(fd, i);
+						--i;
+						continue;
+					}
+					if (revents & POLLIN) {
+						std::cout << "entrou aqui POLLIN" << std::endl;
+						_handleConnectionRead(fd, i);
+					} 
+					// Trata escrita
+					if (revents & POLLOUT) {
+						std::cout << "entrou aqui POLLOUT" << std::endl;
+						_handleConnectionWrite(fd, i);
+					}
 				}
 			}
-		}
 		}
 
 	} catch (const std::exception& e) {
@@ -232,10 +232,12 @@ size_t ServerManager::_findPollIndex(int fd) const {
 }
 
 void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
-    char buffer[1024];
+    char buffer[4096];
     std::string accumulatedData = "";
+
     while (true) {
         ssize_t bytesRead = recv(connectionFd, buffer, sizeof(buffer) - 1, 0);
+
         if (bytesRead < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 break;
@@ -245,23 +247,53 @@ void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
         } 
         
         if (bytesRead == 0) {
-            std::cout << "[ServerManager] Cliente fechou a conexão (FD: " << connectionFd << ")" << std::endl;
+            std::cout << "[_handleConnectionRead] Cliente fechou a conexão (FD: " << connectionFd << ")" << std::endl;
             _closeConnection(connectionFd, pollIndex);
             return;
         }
+
         buffer[bytesRead] = '\0';
         accumulatedData += buffer;
     }
-    std::cout << "[ServerManager] Requisição completa lida do FD " << connectionFd << ":\n" << accumulatedData << std::endl;
-    // parser para HttpRequest
-	// falta desenvolver http response
-	// mudança do events para encerrar requisição
-	_pollFds[pollIndex].events = POLLOUT;
+    Connection* conn = _connections[connectionFd];
+    if (!conn) return;
+    conn->getRequest().feed(accumulatedData);
+
+    HttpRequest::ParsingState state = conn->getRequest().getState();
+	std::cout << "[_handleConnectionRead] Requisição HTTP state: " << state << std::endl;
+	
+    if (state == HttpRequest::REQUEST_COMPLETE) {
+		std::cout << "[ServerManager] Requisição HTTP 100% completa no FD " << connectionFd << std::endl;
+        
+        // =================================================================
+        // 1. RESOLUÇÃO DE VIRTUAL HOST ACONTECE AQUI!
+        // =================================================================
+        std::string hostHeader = conn->getRequest().getHeader("Host");
+        
+        // Remove a porta se vier junto (ex: "localhost:8080" -> "localhost")
+        size_t colonPos = hostHeader.find(':');
+        if (colonPos != std::string::npos) {
+            hostHeader = hostHeader.substr(0, colonPos);
+        }
+
+        // Atualiza a configuração da conexão com base no Host encontrado
+        conn->matchAndSetServerConfig(hostHeader);
+        // =================================================================
+
+        // 2. Muda o evento para POLLOUT para preparar a resposta na próxima etapa
+        _pollFds[pollIndex].events = POLLOUT;
+
+    } else if (state == HttpRequest::REQUEST_ERROR) {
+        std::cerr << "[_handleConnectionRead] Erro de parsing HTTP (400 Bad Request)." << std::endl;
+        _closeConnection(connectionFd, pollIndex);
+
+    } else {
+        std::cout << "[_handleConnectionRead] Requisição parcial, aguardando mais dados..." << std::endl;
+    }
 }
 
 void ServerManager::_handleConnectionWrite(int connectionFd, size_t pollIndex) {
-    // Stub temporário: apenas fecha a conexão para liberar o cliente (ex: o curl) 
-    // e evitar que ele fique travado esperando uma resposta.
+
     _closeConnection(connectionFd, pollIndex);
 }
 
@@ -287,14 +319,6 @@ bool ServerManager::_isListeningSocket(int fd) const {
     }
     return false;
 }
-// void ServerManager::_closeConnectionConnection(int connectionFd, size_t pollIndex)
-// {
-
-// }
-// void ServerManager::_cleanupListeningSockets()
-// {
-
-// }
 
 const ServerConfig* ServerManager::_getConfigForListenSocket(int listenFd) const {
 	std::map<int, const ServerConfig*>::const_iterator it = _listenSocketMap.find(listenFd);
@@ -305,6 +329,5 @@ const ServerConfig* ServerManager::_getConfigForListenSocket(int listenFd) const
 	if (!_serverConfigs.empty()) {
 		return &_serverConfigs[0];
 	}
-	
 	return NULL;
 }

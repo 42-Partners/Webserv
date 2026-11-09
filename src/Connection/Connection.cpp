@@ -21,8 +21,9 @@ Connection::Connection(int ConnectionFd, const std::string& ConnectionIp, const 
       _httpRequest(new HttpRequest()),
       _lastActivity(time(NULL)),
       _connectionState(READING_HEADER),
-      _httpResponse() {
-}
+      _httpResponse()
+    {
+    }
 
 Connection::~Connection() {
     delete _httpRequest;

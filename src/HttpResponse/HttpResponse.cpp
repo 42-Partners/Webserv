@@ -1,5 +1,3 @@
-//não sei pq, mas não veio as funçoes do arquivo populei de forma generica para não dar erro ao compilar
-
 #include "HttpResponse/HttpResponse.hpp"
 
 HttpResponse::HttpResponse()
