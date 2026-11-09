@@ -7,13 +7,20 @@
 #include "StatusCode/StatusCode.hpp"
 
 #include <cassert>
+#include <ctime>
+#include <string>
+#include <vector>
 
 static HttpResponse route( const HttpRequest & request, const ServerConfig & config );
+static void finalizeResponse( HttpResponse & response );
 
 HttpResponse process( const HttpRequest & request, const ServerConfig & config ) { 
-	HttpResponse response;
-	
-	response = route( request, config );
+	HttpResponse response = route( request, config );
+
+	if ( !request.getKeepAlive() )
+		response.setKeepAlive( false );
+
+	finalizeResponse( response );
 
 	return response;
 }
@@ -33,9 +40,10 @@ static const LocationConfig * resolveLocation( const std::string & requestPath, 
 
 		if ( requestPath.compare( 0, size, locPath ) ) continue;
 
-		if ( locPath[size-1] != '/' &&
-			 requestPath.size() != size &&
-			 requestPath[size] != '/' ) continue;
+		bool boundaryOk = locPath[size-1] == '/'
+						|| requestPath.size() == size
+						|| requestPath[size] == '/';
+		if ( !boundaryOk ) continue;
 
 		if ( size > bestSize ) {
 			bestSize = size;
@@ -62,7 +70,7 @@ static Methods methodFromString( const std::string & method ) {
 static HttpResponse route( const HttpRequest & request, const ServerConfig & config ) {
 	if ( request.getState() == HttpRequest::REQUEST_ERROR ) {
 		HttpResponse response = handleError( config, request.getErrorCode() );
-		response.setConnectionState( true );
+		response.setKeepAlive( false );
 		return response;
 	}
 
@@ -77,7 +85,7 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 
 	if ( !loc->isMethodAllowed( request.getMethod() ) ) {
 		HttpResponse response = handleError( config, STATUS_METHOD_NOT_ALLOWED );
-		response.setHeader( "allow", loc->getAllowedMethodsString() );
+		response.setHeader( "Allow", loc->getAllowedMethodsString() );
 		return response;
 	}
 
@@ -91,4 +99,23 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 		default:
 			return handleError( config, STATUS_INTERNAL_SERVER_ERROR );
 	}
+}
+
+static void finalizeResponse( HttpResponse & response ) {
+	if ( !response.getBody().empty() ) {
+		if ( !response.hasHeader( "Content-Type" ) )
+			response.setHeader( "Content-Type", "application/octet-stream" );
+	}
+
+	response.setHeader( "Server", "42webserver" );
+
+	time_t timestamp = std::time( NULL );
+	struct tm * utc = std::gmtime( &timestamp );
+	char date[64];
+
+	if ( utc && std::strftime( date, sizeof( date ), "%a, %d %b %Y %H:%M:%S GMT", utc ) > 0 )
+		response.setHeader( "Date", date );
+
+	if ( !response.getKeepAlive() )
+		response.setHeader( "Connection", "close" );
 }

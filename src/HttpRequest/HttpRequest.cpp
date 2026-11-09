@@ -1,62 +1,63 @@
 #include "HttpRequest/HttpRequest.hpp"
+#include "Utils/Utils.hpp"
 
-HttpRequest::HttpRequest()
-	: _errorCode(0),
-	  _state(PARSING_REQUEST_LINE),
-	  _keepAlive(true),
-	  _isChunked(false),
-	  _hasContentLength(false),
-	  _contentLength(0),
-	  _maxBodySize(DEFAULT_MAX_BODY) {}
+HttpRequest::HttpRequest( )
+	: _errorCode( 0 ),
+	  _state( PARSING_REQUEST_LINE ),
+	  _keepAlive( true ),
+	  _isChunked( false ),
+	  _hasContentLength( false ),
+	  _contentLength( 0 ),
+	  _maxBodySize( DEFAULT_MAX_BODY ) {}
 
-HttpRequest::HttpRequest( size_t maxSize ) 
-	: _errorCode(0),
-	  _state(PARSING_REQUEST_LINE),
-	  _keepAlive(true),
-	  _isChunked(false),
-	  _hasContentLength(false),
-	  _contentLength(0),
-	  _maxBodySize(maxSize) {}
+HttpRequest::HttpRequest(  size_t maxSize  ) 
+	: _errorCode( 0 ),
+	  _state( PARSING_REQUEST_LINE ),
+	  _keepAlive( true ),
+	  _isChunked( false ),
+	  _hasContentLength( false ),
+	  _contentLength( 0 ),
+	  _maxBodySize( maxSize ) {}
 
-HttpRequest::~HttpRequest() {}
+HttpRequest::~HttpRequest( ) {}
 
-int HttpRequest::getErrorCode() const { return(this->_errorCode); }
+int HttpRequest::getErrorCode( ) const { return this->_errorCode; }
 
-HttpRequest::ParsingState HttpRequest::getState() const { return(this->_state); }
+HttpRequest::ParsingState HttpRequest::getState( ) const { return this->_state; }
 
-bool HttpRequest::getKeepAlive() const { return (this->_keepAlive); }
+bool HttpRequest::getKeepAlive( ) const { return this->_keepAlive; }
 
-const std::string& HttpRequest::getMethod() const { return (this->_method); }
+const std::string & HttpRequest::getMethod( ) const { return  this->_method; }
 
-const std::string& HttpRequest::getUri() const { return(this->_uri); }
+const std::string & HttpRequest::getUri( ) const { return this->_uri; }
 
-const std::string& HttpRequest::getPath() const { return(this->_path); }
+const std::string & HttpRequest::getPath( ) const { return this->_path; }
 
-const std::string& HttpRequest::getQueryString() const { return(this->_queryString); }
+const std::string & HttpRequest::getQueryString( ) const { return this->_queryString; }
 
-const std::string& HttpRequest::getHttpVersion() const { return(this->_httpVersion); }
+const std::string & HttpRequest::getHttpVersion( ) const { return this->_httpVersion; }
 
-const std::string& HttpRequest::getBody() const { return(this->_body); }
+const std::string & HttpRequest::getBody( ) const { return this->_body; }
 
-const std::map<std::string, std::string>& HttpRequest::getHeaders() const { return(this->_headers); }
+const std::map<std::string, std::string> & HttpRequest::getHeaders( ) const { return this->_headers; }
 
-std::string HttpRequest::getHeader(const std::string& key) const {
-	const_map_iterator it = this->_headers.find(key);
+std::string HttpRequest::getHeader( const std::string & key ) const {
+	const_map_iterator it = this->_headers.find( toLower(key) );
 
-	if (it != this->_headers.end()) { return it->second; }
+	if ( it != this->_headers.end() ) { return it->second; }
 
 	return "";
 }
 
-bool HttpRequest::hasHeader(const std::string& key) const {
-	const_map_iterator it = this->_headers.find(key);
+bool HttpRequest::hasHeader( const std::string & key ) const {
+	const_map_iterator it = this->_headers.find( toLower(key) );
 
-	if (it != this->_headers.end()) { return true; }
+	if ( it != this->_headers.end() ) { return true; }
 
 	return false;
 }
 
-void HttpRequest::clear() {
+void HttpRequest::clear( ) {
 	this->_errorCode = 0;
 	this->_state = PARSING_REQUEST_LINE;
 	this->_keepAlive = true;
@@ -64,11 +65,11 @@ void HttpRequest::clear() {
 	this->_hasContentLength = false;
 	this->_contentLength = 0;
 	this->_maxBodySize = DEFAULT_MAX_BODY; // e se vier do construtor?
-	this->_method.clear();
-	this->_uri.clear();
-	this->_path.clear();
-	this->_queryString.clear();
-	this->_httpVersion.clear();
-	this->_body.clear();
-	this->_headers.clear();
+	this->_method.clear( );
+	this->_uri.clear( );
+	this->_path.clear( );
+	this->_queryString.clear( );
+	this->_httpVersion.clear( );
+	this->_body.clear( );
+	this->_headers.clear( );
 }

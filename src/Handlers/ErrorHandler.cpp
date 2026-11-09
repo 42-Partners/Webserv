@@ -14,7 +14,7 @@ HttpResponse handleError( const ServerConfig & config, int error ) {
 	response.setBody( errorPageBody( error, config ) );
 
 	if ( error >= 500 )
-		response.setConnectionState( true );
+		response.setKeepAlive( false );
 
 	response.setHeader( "content-type", "text/html; charset=utf-8" );
 
