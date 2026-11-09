@@ -139,3 +139,15 @@ std::string Connection::getRawResponse()
     "<html><body><h1>Funcionou! Webserv online.</h1></body></html>";
 	return testResponse;
 }
+
+size_t Connection::getBytesSent() const {
+		return _bytesSent;
+}
+
+void Connection::addBytesSent(size_t n) {
+	_bytesSent += n;
+}
+
+void Connection::resetBytesSent() {
+	_bytesSent = 0;
+}

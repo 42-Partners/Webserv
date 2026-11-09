@@ -3,7 +3,7 @@
 
 #include <string>
 #include <vector>
-#include <utility> // Necessário para std::pair
+#include <utility>
 
 class LocationConfig {
 private:
