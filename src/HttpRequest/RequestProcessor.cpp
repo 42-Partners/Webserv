@@ -6,7 +6,7 @@
 403 Forbidden -> sem permissão de leitura, ou diretório sem index com autoindex desligado
 */
 
-void process(Connection & connection, ServerConfig & config) { 
+void process(Connection & connection, const ServerConfig & config) {
 	(void)connection;
 	(void)config;
 }

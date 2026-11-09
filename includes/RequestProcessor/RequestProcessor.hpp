@@ -5,6 +5,6 @@
 #include "config/ServerConfig.hpp"
 #include "HttpRequest/HttpRequest.hpp"
 
-void process(Connection & connection, ServerConfig & config);
+void process(Connection & connection, const ServerConfig & config);
 
 #endif

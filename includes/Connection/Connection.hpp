@@ -44,8 +44,9 @@ public:
     std::string&        getReadBuffer();
     std::string&        getWriteBuffer();
     HttpRequest&        getRequest();
-
-
+    void matchAndSetServerConfig(const std::string& hostHeader);
+    const ServerConfig& getServerConfig() const;
+    std::string getRawResponse();
     // Esta função pertence ao objeto que gerencia a conexão do connection. Ela orquestra o reset de 
     // todos os componentes da conexão para permitir que o mesmo socket TCP leia uma nova requisição vinda 
     // do navegador sem precisar fechar a porta (accept/close).
