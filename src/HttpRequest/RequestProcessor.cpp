@@ -1,6 +1,6 @@
 #include "config/LocationConfig.hpp"
-#include "HttpResponse/ErrorPage.hpp"
 #include "Handlers/ErrorHandler.hpp"
+#include "Handlers/RedirectHandler.hpp"
 #include "Handlers/StaticFileHandler.hpp"
 #include "Handlers/UploadHandler.hpp"
 #include "RequestProcessor/RequestProcessor.hpp"
@@ -66,11 +66,14 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 		return response;
 	}
 
-	assert( request.getState() == HttpRequest::REQUEST_COMPLETE );
+	assert( request.getState() == HttpRequest::REQUEST_COMPLETE ); // tirar antes da entrega
 
 	const LocationConfig * loc = resolveLocation( request.getPath(), config );
 	if  ( !loc )
 		return handleError( config, STATUS_NOT_FOUND );
+
+	if ( loc->hasRedirect() )
+		return handleRedirect( *loc );
 
 	if ( !loc->isMethodAllowed( request.getMethod() ) ) {
 		HttpResponse response = handleError( config, STATUS_METHOD_NOT_ALLOWED );
