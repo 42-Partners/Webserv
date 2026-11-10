@@ -36,6 +36,7 @@ public:
     ~Connection();
     Connection(const Connection& other);
     Connection& operator=(const Connection& other);
+    void                setHttpResponse(HttpResponse response);
     int                 getFd() const;
     ConnectionState     getState() const;
     void                setState(ConnectionState newState);

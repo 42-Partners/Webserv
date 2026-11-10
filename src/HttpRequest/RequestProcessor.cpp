@@ -7,10 +7,10 @@
 #include "StatusCode/StatusCode.hpp"
 
 #include <cassert>
-
+// void process(Connection & connection, const ServerConfig & config) {
 static HttpResponse route( const HttpRequest & request, const ServerConfig & config );
 
-HttpResponse process( const HttpRequest & request, const ServerConfig & config ) { 
+HttpResponse process( const HttpRequest & request, const ServerConfig & config ) {
 	HttpResponse response;
 	
 	response = route( request, config );

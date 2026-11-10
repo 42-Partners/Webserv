@@ -272,11 +272,9 @@ void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
 		if (colonPos != std::string::npos) {
 			hostHeader = hostHeader.substr(0, colonPos);
 		}
-		process(*conn, conn->getServerConfig());
 
+		conn->setHttpResponse(process(conn->getRequest(), conn->getServerConfig()));
 		_pollFds[pollIndex].events = POLLOUT;
-
-
 	} else if (state == HttpRequest::REQUEST_ERROR) {
 		std::cerr << "[_handleConnectionRead] Erro de parsing HTTP (400 Bad Request)." << std::endl;
 		_closeConnection(connectionFd, pollIndex);

@@ -104,7 +104,7 @@ void Connection::resetForNextRequest() {
 	}
 	this->_readBuffer.clear();
 	this->_writeBuffer.clear();
-	this->_httpResponse.clear();
+	// this->_httpResponse.clear();
 	this->_connectionState = READING_HEADER;
 	this->updateLastActivity();
 }
@@ -130,14 +130,7 @@ const ServerConfig& Connection::getServerConfig() const
 
 std::string Connection::getRawResponse()
 {
-	std::string testResponse = 
-    "HTTP/1.1 200 OK\r\n"
-    "Content-Type: text/html; charset=UTF-8\r\n"
-    "Content-Length: 52\r\n"
-    "Connection: close\r\n"
-    "\r\n"
-    "<html><body><h1>Funcionou! Webserv online.</h1></body></html>";
-	return testResponse;
+	return this->_httpResponse.serialize();
 }
 
 size_t Connection::getBytesSent() const {
@@ -150,4 +143,9 @@ void Connection::addBytesSent(size_t n) {
 
 void Connection::resetBytesSent() {
 	_bytesSent = 0;
+}
+
+void	Connection::setHttpResponse(HttpResponse response)
+{
+	this->_httpResponse = response;
 }
