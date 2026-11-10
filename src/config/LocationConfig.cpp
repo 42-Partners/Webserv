@@ -8,7 +8,7 @@ LocationConfig::LocationConfig()
       _index(""),
       _cgiExtension(""),
       _uploadPath(""),
-      _redirect(std::make_pair(0, "")) {
+      _redirect(0, "") {
 }
 
 LocationConfig::LocationConfig(const LocationConfig& other)
@@ -80,4 +80,8 @@ bool LocationConfig::isMethodAllowed(const std::string& method) const {
         if (this->_allowedMethods[i] == method) return true;
     }
     return false;
+}
+
+bool LocationConfig::hasRedirect() const {
+    return !_redirect.second.empty();
 }
