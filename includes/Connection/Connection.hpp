@@ -28,6 +28,7 @@ private:
     time_t              _lastActivity;
     ConnectionState     _connectionState;
     HttpResponse        _httpResponse;
+    size_t              _bytesSent;
 
 public:
     Connection();
@@ -35,6 +36,7 @@ public:
     ~Connection();
     Connection(const Connection& other);
     Connection& operator=(const Connection& other);
+    void                setHttpResponse(HttpResponse response);
     int                 getFd() const;
     ConnectionState     getState() const;
     void                setState(ConnectionState newState);
@@ -44,8 +46,12 @@ public:
     std::string&        getReadBuffer();
     std::string&        getWriteBuffer();
     HttpRequest&        getRequest();
-
-
+    void matchAndSetServerConfig(const std::string& hostHeader);
+    const ServerConfig& getServerConfig() const;
+    std::string getRawResponse();
+    size_t getBytesSent() const;
+    void addBytesSent(size_t n);
+    void resetBytesSent();
     // Esta função pertence ao objeto que gerencia a conexão do connection. Ela orquestra o reset de 
     // todos os componentes da conexão para permitir que o mesmo socket TCP leia uma nova requisição vinda 
     // do navegador sem precisar fechar a porta (accept/close).
