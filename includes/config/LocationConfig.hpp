@@ -3,7 +3,7 @@
 
 #include <string>
 #include <vector>
-#include <utility> // Necessário para std::pair
+#include <utility>
 
 class LocationConfig {
 private:
@@ -23,15 +23,15 @@ public:
     ~LocationConfig();
 
     // Getters
-    const std::string&                  getPath() const;
-    const std::vector<std::string>&     getAllowedMethods() const;
-    std::string                         getAllowedMethodsString() const;
-    const std::string&                  getRoot() const;
-    bool                                getAutoindex() const;
-    const std::string&                  getIndex() const;
-    const std::string&                  getCgiExtension() const;
-    const std::string&                  getUploadPath() const;
-    const std::pair<int, std::string>&  getRedirect() const;
+    const std::string&  getPath() const;
+    const std::vector<std::string>& getAllowedMethods() const;
+    std::string getAllowedMethodsString() const;
+    const std::string& getRoot() const;
+    bool getAutoindex() const;
+    const std::string& getIndex() const;
+    const std::string& getCgiExtension() const;
+    const std::string& getUploadPath() const;
+    const std::pair<int, std::string>& getRedirect() const;
 
     // Setters
     void setPath(const std::string& path);
@@ -47,6 +47,7 @@ public:
     // Utilitário
     void addAllowedMethod(const std::string& method);
     bool isMethodAllowed(const std::string& method) const;
+    bool hasRedirect() const;
 };
 
 #endif
