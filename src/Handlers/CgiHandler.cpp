@@ -1,11 +1,22 @@
 #include "Handlers/CgiHandler.hpp"
 
-char* createEnvString(const std::string& key, const std::string& value) {
+void setNonBlocking(int fd) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
+
+static char* createEnvString(const std::string& key, const std::string& value) {
     std::string full = key + "=" + value;
     return strdup(full.c_str());
 }
 
-std::vector<char*> buildCgiEnvironment(const HttpRequest& req, const ServerConfig& server, const LocationConfig& loc) {
+static void freeEnvArray(std::vector<char*>& env) {
+    for (size_t i = 0; i < env.size(); ++i) {
+        if (env[i]) free(env[i]);
+    }
+}
+
+std::vector<char*> buildCgiEnvironment(const HttpRequest& req, int serverPort, const std::string& serverName) {
     std::vector<char*> env;
 
     env.push_back(createEnvString("REQUEST_METHOD", req.getMethod()));
@@ -15,10 +26,10 @@ std::vector<char*> buildCgiEnvironment(const HttpRequest& req, const ServerConfi
     env.push_back(createEnvString("SCRIPT_NAME", req.getPath()));
     env.push_back(createEnvString("PATH_INFO", ""));
     env.push_back(createEnvString("SERVER_PROTOCOL", "HTTP/1.1"));
-    env.push_back(createEnvString("SERVER_NAME", server.getServerName())); // averigua
-    
+    env.push_back(createEnvString("SERVER_NAME", serverName));
+
     std::ostringstream portStream;
-    portStream << server.getPort();
+    portStream << serverPort;
     env.push_back(createEnvString("SERVER_PORT", portStream.str()));
     
     env.push_back(createEnvString("GATEWAY_INTERFACE", "CGI/1.1"));
@@ -26,4 +37,131 @@ std::vector<char*> buildCgiEnvironment(const HttpRequest& req, const ServerConfi
 
     env.push_back(NULL);
     return env;
+}
+
+HttpResponse executeCgi(const HttpRequest& req, const std::string& scriptPath, int serverPort, const std::string& serverName) {
+    HttpResponse response;
+    CgiSession session;
+    
+    session.requestBody = req.getBody();
+    session.bytesWritten = 0;
+    session.isFinished = false;
+
+    if (pipe(session.pipe_in) < 0 || pipe(session.pipe_out) < 0) {
+        response.setStatus(500);
+        response.setBody("Error: Internal Server Error (Pipe failed)");
+        return response;
+    }
+
+    std::vector<char*> envp = buildCgiEnvironment(req, serverPort, serverName);
+
+    session.pid = fork();
+    if (session.pid < 0) {
+        freeEnvArray(envp);
+        close(session.pipe_in[0]); close(session.pipe_in[1]);
+        close(session.pipe_out[0]); close(session.pipe_out[1]);
+        response.setStatus(500);
+        response.setBody("Error: Internal Server Error (Fork failed)");
+        return response;
+    }
+
+    if (session.pid == 0) {
+        dup2(session.pipe_in[0], STDIN_FILENO);
+        dup2(session.pipe_out[1], STDOUT_FILENO);
+
+        close(session.pipe_in[0]);
+        close(session.pipe_in[1]);
+        close(session.pipe_out[0]);
+        close(session.pipe_out[1]);
+
+        char* const args[] = { (char*)scriptPath.c_str(), NULL };
+        execve(scriptPath.c_str(), args, envp.data());
+        
+        freeEnvArray(envp);
+        exit(1);
+    }
+
+    freeEnvArray(envp);
+
+    close(session.pipe_in[0]);
+    close(session.pipe_out[1]);
+
+    setNonBlocking(session.pipe_in[1]);
+    setNonBlocking(session.pipe_out[0]);
+
+    time_t startTime = time(NULL);
+    while (!session.isFinished) {
+        if (time(NULL) - startTime > 5) {
+            kill(session.pid, SIGKILL);
+            break;
+        }
+
+        struct pollfd pfd[2];
+        pfd[0].fd = session.pipe_in[1];
+        pfd[0].events = (session.bytesWritten < session.requestBody.size()) ? POLLOUT : 0;
+
+        pfd[1].fd = session.pipe_out[0];
+        pfd[1].events = POLLIN;
+
+        int ret = poll(pfd, 2, 100);
+        if (ret < 0) break;
+        if (ret == 0) continue;
+
+        if (pfd[0].revents & POLLOUT) {
+            size_t remaining = session.requestBody.size() - session.bytesWritten;
+            ssize_t written = write(session.pipe_in[1], session.requestBody.data() + session.bytesWritten, remaining);
+            if (written > 0) {
+                session.bytesWritten += written;
+                if (session.bytesWritten >= session.requestBody.size()) {
+                    close(session.pipe_in[1]);
+                    session.pipe_in[1] = -1;
+                }
+            }
+        }
+
+        if (pfd[1].revents & POLLIN) {
+            char buffer[4096];
+            ssize_t bytesRead = read(session.pipe_out[0], buffer, sizeof(buffer));
+            if (bytesRead > 0) {
+                session.cgiOutput.append(buffer, bytesRead);
+            } else if (bytesRead == 0) {
+                session.isFinished = true;
+            }
+        }
+    }
+
+    if (session.pipe_in[1] != -1) close(session.pipe_in[1]);
+    if (session.pipe_out[0] != -1) close(session.pipe_out[0]);
+    
+    int status;
+    waitpid(session.pid, &status, 0);
+
+    size_t headerEnd = session.cgiOutput.find("\r\n\r\n");
+    std::string headersPart, bodyPart;
+    if (headerEnd != std::string::npos) {
+        headersPart = session.cgiOutput.substr(0, headerEnd);
+        bodyPart = session.cgiOutput.substr(headerEnd + 4);
+    } else {
+        bodyPart = session.cgiOutput;
+    }
+
+    int statusCode = 200;
+    std::vector<std::string> lines = split(headersPart, "\n");
+    for (size_t i = 0; i < lines.size(); ++i) {
+        std::string line = trim(lines[i]);
+        size_t colon = line.find(':');
+        if (colon != std::string::npos) {
+            std::string key = trim(line.substr(0, colon));
+            std::string val = trim(line.substr(colon + 1));
+            if (toLower(key) == "status") {
+                statusCode = std::atoi(val.c_str());
+            } else {
+                response.setHeader(key, val);
+            }
+        }
+    }
+
+    response.setStatus(statusCode);
+    response.setBody(bodyPart);
+    return response;
 }

@@ -13,6 +13,7 @@
 
 static HttpResponse route( const HttpRequest & request, const ServerConfig & config );
 static void finalizeResponse( HttpResponse & response );
+bool isCgiRequest(const std::string& path);
 
 HttpResponse process( const HttpRequest & request, const ServerConfig & config ) { 
 	HttpResponse response = route( request, config );
@@ -89,6 +90,22 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 		return response;
 	}
 
+	if (isCgiRequest(request.getPath())) {
+        struct stat buffer;
+        if (stat((loc->getPath() + request.getPath()).c_str(), &buffer) != 0) {
+			HttpResponse response;
+            response.setStatus(STATUS_NOT_FOUND); // 404
+            response.setBody("Error: CGI Script Not Found");
+            return response;
+        }
+
+        return executeCgi(
+			request,
+			(loc->getPath() + request.getPath()),
+			config.getPort(),
+			config.getServerNames().empty() ? "localhost" : config.getServerNames()[0]);
+    }
+
 	switch ( methodFromString( request.getMethod() ) ) {
 		case METHOD_GET: 
 			return handleGet( request, config, *loc );
@@ -118,4 +135,17 @@ static void finalizeResponse( HttpResponse & response ) {
 
 	if ( !response.getKeepAlive() )
 		response.setHeader( "Connection", "close" );
+}
+
+
+bool isCgiRequest(const std::string& path) {
+    size_t dot = path.find_last_of(".");
+    if (dot != std::string::npos) {
+        std::string ext = path.substr(dot);
+        if (ext == ".php" || ext == ".py" || ext == ".sh") {
+            return true;
+        }
+    }
+
+    return false;
 }
