@@ -5,6 +5,7 @@
 #include "HttpRequest/HttpRequest.hpp"
 #include "HttpResponse/HttpResponse.hpp"
 #include "Utils/Utils.hpp"
+#include "StatusCode/StatusCode.hpp"
 #include <vector>
 #include <sstream>
 #include <string>

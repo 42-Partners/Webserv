@@ -90,9 +90,19 @@ HttpResponse executeCgi(const HttpRequest& req, const std::string& scriptPath, i
     setNonBlocking(session.pipe_out[0]);
 
     time_t startTime = time(NULL);
+    int status = 0;
+    bool timedOut = false;
+
     while (!session.isFinished) {
         if (time(NULL) - startTime > 5) {
             kill(session.pid, SIGKILL);
+            timedOut = true;
+            break;
+        }
+
+        pid_t result = waitpid(session.pid, &status, WNOHANG);
+        if (result > 0) {
+            session.isFinished = true;
             break;
         }
 
@@ -133,8 +143,30 @@ HttpResponse executeCgi(const HttpRequest& req, const std::string& scriptPath, i
     if (session.pipe_in[1] != -1) close(session.pipe_in[1]);
     if (session.pipe_out[0] != -1) close(session.pipe_out[0]);
     
-    int status;
     waitpid(session.pid, &status, 0);
+
+    int statusCode = STATUS_OK; // 200
+
+    if (timedOut) {
+        response.setStatus(STATUS_GATEWAY_TIMEOUT); // 504
+        response.setBody("Error: 504 Gateway Timeout (CGI script took too long to execute)");
+        return response;
+    }
+
+    if (WIFSIGNALED(status)) {
+        response.setStatus(STATUS_INTERNAL_SERVER_ERROR); // 500
+        response.setBody("Error: 500 Internal Server Error (CGI crashed by signal)");
+        return response;
+    }
+
+    if (WIFEXITED(status)) {
+        int exitCode = WEXITSTATUS(status);
+        if (exitCode != 0) {
+            response.setStatus(STATUS_INTERNAL_SERVER_ERROR); // 500
+            response.setBody("Error: 500 Internal Server Error (CGI exited with non-zero status)");
+            return response;
+        }
+    }
 
     size_t headerEnd = session.cgiOutput.find("\r\n\r\n");
     std::string headersPart, bodyPart;
@@ -142,10 +174,15 @@ HttpResponse executeCgi(const HttpRequest& req, const std::string& scriptPath, i
         headersPart = session.cgiOutput.substr(0, headerEnd);
         bodyPart = session.cgiOutput.substr(headerEnd + 4);
     } else {
-        bodyPart = session.cgiOutput;
+        headerEnd = session.cgiOutput.find("\n\n");
+        if (headerEnd != std::string::npos) {
+            headersPart = session.cgiOutput.substr(0, headerEnd);
+            bodyPart = session.cgiOutput.substr(headerEnd + 2);
+        } else {
+            bodyPart = session.cgiOutput;
+        }
     }
 
-    int statusCode = 200;
     std::vector<std::string> lines = split(headersPart, "\n");
     for (size_t i = 0; i < lines.size(); ++i) {
         std::string line = trim(lines[i]);
