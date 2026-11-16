@@ -29,6 +29,7 @@ SRC			:=	src/main.cpp \
 				src/Handlers/RedirectHandler.cpp \
 				src/Handlers/StaticFileHandler.cpp  \
 				src/Handlers/UploadHandler.cpp  \
+				src/Handlers/CgiHandler.cpp  \
 				src/HttpRequest/HttpRequest.cpp  \
 				src/HttpRequest/RequestParser.cpp  \
 				src/HttpRequest/RequestProcessor.cpp  \
