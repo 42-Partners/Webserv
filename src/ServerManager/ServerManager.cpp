@@ -258,7 +258,8 @@ void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
 	}
 	Connection* conn = _connections[connectionFd];
 	if (!conn) return;
-	conn->getRequest().feed(accumulatedData);
+	conn->getReadBuffer().append(accumulatedData);
+	conn->getRequest().feed(conn->getReadBuffer());
 
 	HttpRequest::ParsingState state = conn->getRequest().getState();
 	std::cout << "[_handleConnectionRead] Requisição HTTP state: " << state << std::endl;

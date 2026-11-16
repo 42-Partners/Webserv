@@ -9,7 +9,8 @@ Connection::Connection()
 	_httpRequest(NULL),
 	_lastActivity(time(NULL)),
 	_connectionState(READING_HEADER),
-	_httpResponse() {
+	_httpResponse(),
+	_bytesSent(0) {
 }
 
 Connection::Connection(int ConnectionFd, const std::string& ConnectionIp, const ServerConfig* config)
@@ -21,7 +22,8 @@ Connection::Connection(int ConnectionFd, const std::string& ConnectionIp, const 
 	_httpRequest(new HttpRequest()),
 	_lastActivity(time(NULL)),
 	_connectionState(READING_HEADER),
-	_httpResponse()
+	_httpResponse(),
+	_bytesSent(0)
 	{
 	}
 
@@ -38,7 +40,8 @@ Connection::Connection(const Connection& other)
 	_httpRequest(other._httpRequest ? new HttpRequest(*other._httpRequest) : NULL),
 	_lastActivity(other._lastActivity),
 	_connectionState(other._connectionState),
-	_httpResponse(other._httpResponse) {
+	_httpResponse(other._httpResponse),
+	_bytesSent(other._bytesSent) {
 }
 
 Connection& Connection::operator=(const Connection& other) {
@@ -53,6 +56,7 @@ Connection& Connection::operator=(const Connection& other) {
 		_lastActivity = other._lastActivity;
 		_connectionState = other._connectionState;
 		_httpResponse = other._httpResponse;
+		_bytesSent = other._bytesSent;
 	}
 	return *this;
 }
