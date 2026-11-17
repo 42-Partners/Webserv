@@ -8,7 +8,7 @@ HttpResponse::HttpResponse() : _statusCode(0), _keepAlive(false) { }
 
 HttpResponse::~HttpResponse() { }
 
-// bool HttpResponse::isError() const { return _statusCode >= 400 && _statusCode <= 59; }
+bool HttpResponse::isError() const { return _statusCode >= 400 && _statusCode <= 599; }
 
 bool HttpResponse::getKeepAlive() const { return this->_keepAlive; }
 
