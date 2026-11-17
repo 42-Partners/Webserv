@@ -106,9 +106,9 @@ void Connection::resetForNextRequest() {
 	if (this->_httpRequest != NULL) {
 		this->_httpRequest->clear();
 	}
-	this->_readBuffer.clear();
 	this->_writeBuffer.clear();
-	// this->_httpResponse.clear();
+	this->_httpResponse = HttpResponse();
+	this->resetBytesSent();
 	this->_connectionState = READING_HEADER;
 	this->updateLastActivity();
 }

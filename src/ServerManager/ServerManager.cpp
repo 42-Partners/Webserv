@@ -16,6 +16,18 @@
 #include <errno.h>
 #include <algorithm>
 
+static HttpResponse buildConnectionResponse(Connection* conn) {
+	HttpRequest& request = conn->getRequest();
+	HttpResponse response = process(request, conn->getServerConfig());
+	bool keepAlive = request.getState() != HttpRequest::REQUEST_ERROR
+		&& request.getKeepAlive()
+		&& response.getStatusCode() < 500;
+
+	response.setKeepAlive(keepAlive);
+	response.setHeader("Connection", keepAlive ? "keep-alive" : "close");
+	return response;
+}
+
 ServerManager::ServerManager(const std::vector<ServerConfig>& configs)
 	: _serverConfigs(configs) {
 }
@@ -274,12 +286,8 @@ void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
 			hostHeader = hostHeader.substr(0, colonPos);
 		}
 
-		conn->setHttpResponse(process(conn->getRequest(), conn->getServerConfig()));
+		conn->setHttpResponse(buildConnectionResponse(conn));
 		_pollFds[pollIndex].events = POLLOUT;
-	// } else if (state == HttpRequest::REQUEST_ERROR) {
-	// 	std::cerr << "[_handleConnectionRead] Erro de parsing HTTP (400 Bad Request)." << std::endl;
-	// 	_closeConnection(connectionFd, pollIndex);
-
 	} else {
 		std::cout << "[_handleConnectionRead] Requisição parcial, aguardando mais dados..." << std::endl;
 	}
@@ -290,30 +298,41 @@ void ServerManager::_handleConnectionWrite(int connectionFd, size_t pollIndex) {
     Connection* conn = _connections[connectionFd];
     if (!conn) return;
 
-    const std::string& responseData = conn->getRawResponse();
-    size_t totalToSend = responseData.size();
-    size_t alreadySent = conn->getBytesSent();
-    ssize_t bytesSent = send(connectionFd, responseData.c_str() + alreadySent, totalToSend - alreadySent, 0);
+	const std::string responseData = conn->getRawResponse();
+	size_t totalToSend = responseData.size();
+	size_t alreadySent = conn->getBytesSent();
+	ssize_t bytesSent = send(connectionFd, responseData.c_str() + alreadySent, totalToSend - alreadySent, 0);
 
-    if (bytesSent < 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            return;
-        }
-        _closeConnection(connectionFd, pollIndex);
-        return;
-    }
-    conn->addBytesSent(bytesSent);
-    if (conn->getBytesSent() >= totalToSend) {
-		std::cout << "[ServerManager] Resposta 100% enviada para o FD " << connectionFd << std::endl;
-        // _closeConnection(connectionFd, pollIndex);
-    } else {
-		_pollFds[pollIndex].events = POLLOUT;
-    }
-	if(conn->getHttpResponse().getKeepAlive() == false)
-	{
+	if (bytesSent < 0) {
+		if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			return;
+		}
 		_closeConnection(connectionFd, pollIndex);
 		return;
 	}
+	if (bytesSent == 0) {
+		return;
+	}
+	conn->addBytesSent(static_cast<size_t>(bytesSent));
+	if (conn->getBytesSent() >= totalToSend) {
+		std::cout << "[ServerManager] Resposta 100% enviada para o FD " << connectionFd << std::endl;
+		if (!conn->getHttpResponse().getKeepAlive()) {
+			_closeConnection(connectionFd, pollIndex);
+			return;
+		}
+
+		conn->resetForNextRequest();
+		conn->getRequest().feed(conn->getReadBuffer());
+		HttpRequest::ParsingState state = conn->getRequest().getState();
+		if (state == HttpRequest::REQUEST_COMPLETE || state == HttpRequest::REQUEST_ERROR) {
+			conn->setHttpResponse(buildConnectionResponse(conn));
+			_pollFds[pollIndex].events = POLLOUT;
+		} else {
+			_pollFds[pollIndex].events = POLLIN;
+		}
+    } else {
+		_pollFds[pollIndex].events = POLLOUT;
+    }
 }
 
 
