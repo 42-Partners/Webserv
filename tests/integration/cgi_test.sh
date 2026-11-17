@@ -82,7 +82,6 @@ EOF
 
 start_server() {
     stop_server
-    # $BIN "$1" > /dev/null 2>&1 &
     $BIN "$1" > /dev/null 2>&1 &
     SERVER_PID=$!
     for i in {1..30}; do
@@ -100,11 +99,15 @@ run_test() {
     local status
     status=$(curl -s -D /tmp/cgi_headers.out -o /tmp/cgi_body.out -w "%{http_code}" "$@")
     local body=$([ -f /tmp/cgi_body.out ] && cat /tmp/cgi_body.out || echo "")
-    local hdrs=$([ -f /tmp/cgi_headers.out ] && cat /tmp/cgi_headers.out || echo "")
+
+    local hdr_ok=1
+    if [ -n "$exp_hdr" ]; then
+        grep -qi "$exp_hdr" /tmp/cgi_headers.out 2>/dev/null || hdr_ok=0
+    fi
 
     if [ "$status" == "$exp_status" ] && \
        { [ -z "$exp_body" ] || [[ "$body" == *"$exp_body"* ]]; } && \
-       { [ -z "$exp_hdr" ] || [[ "$hdrs" == *"$exp_hdr"* ]]; }; then
+       [ "$hdr_ok" -eq 1 ]; then
         ((PASSED++))
     else
         ((FAILED++))

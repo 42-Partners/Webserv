@@ -6,6 +6,7 @@
 
 static bool loadErrorPage( const std::string & path, std::string & page );
 static std::string errorPageBody( int errorCode, const ServerConfig & config );
+static std::string resolveErrorPagePath( const std::string & errorUri, const ServerConfig & config );
 
 HttpResponse handleError( const ServerConfig & config, int error ) {
 	HttpResponse response;
@@ -41,9 +42,36 @@ static std::string errorPageBody( int errorCode, const ServerConfig & config ) {
 	const std::map<int, std::string> & errorPages = config.getErrorPages();
 	std::map<int, std::string>::const_iterator it = errorPages.find( errorCode );
 
-	std::string page;
-	if ( it != errorPages.end() && loadErrorPage( it->second, page ) )
-		return page;
+	if ( it != errorPages.end() ) {
+		std::string fullPath = resolveErrorPagePath( it->second, config );
+		std::string page;
+		if ( loadErrorPage( fullPath, page ) )
+			return page;
+	}
 
 	return defaultErrorPage( errorCode );
+}
+
+static std::string resolveErrorPagePath( const std::string & errorUri, const ServerConfig & config ) {
+	if ( errorUri.empty() )
+		return "";
+
+	if ( errorUri.compare( 0, 2, "./" ) == 0 )
+		return errorUri;
+
+	std::string root = "./www";
+	const std::vector<LocationConfig> & locations = config.getLocations();
+	for ( size_t i = 0; i < locations.size(); ++i ) {
+		if ( locations[i].getPath() == "/" && !locations[i].getRoot().empty() ) {
+			root = locations[i].getRoot();
+			break;
+		}
+	}
+
+	if ( root[root.size() - 1] == '/' && errorUri[0] == '/' )
+		return root + errorUri.substr( 1 );
+	if ( errorUri[0] != '/' )
+		return root + "/" + errorUri;
+
+	return root + errorUri;
 }

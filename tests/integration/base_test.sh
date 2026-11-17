@@ -4,6 +4,19 @@
 # Suite de Testes End-to-End (E2E) - Webserv
 # ==============================================================================
 
+# Teste #1 (GET / na porta 8080): Valida se o servidor resolve o index.html padrão da rota raiz e responde 200 OK.
+# Teste #2 (GET /index.html na porta 8080): Valida o acesso direto a um arquivo estático específico, esperando 200 OK.
+# Teste #3 (GET /arquivo_que_nao_existe.html): Testa se o servidor retorna 404 Not Found e serve o corpo configurado na error_page customizada ("Custom 404").
+# Teste #4 (DELETE / na porta 8080): Verifica se o bloqueio de métodos funciona na rota raiz (onde apenas GET e POST são permitidos), retornando 405 Method Not Allowed.
+# Teste #5 (GET /upload): Verifica a restrição de métodos na rota de upload (onde apenas POST é permitido), exigindo 405 Method Not Allowed.
+# Teste #6 (POST /upload multipart): Envia um arquivo real (test_upload.txt), valida se o status é 200 ou 201 e confirma se o arquivo foi fisicamente salvo em ./uploads/.
+# Teste #7 (GET / na porta 8081): Valida o suporte a múltiplas portas simultâneas (listen 8081), esperando 200 OK.
+# Teste #8 (POST de 3MB na porta 8081): Testa a diretiva client_max_body_size 2M, exigindo que o excesso de tamanho seja rejeitado com 413 Payload Too Large.
+# Teste #9 (POST de 3MB na porta 8080): Garante que o limite maior (client_max_body_size 10M) da porta 8080 aceita o mesmo payload de 3MB sem derrubar a conexão (000) nem retornar 413.
+# Teste #10 (GET / com Host: virtual.local): Testa o roteamento de Virtual Host na porta 8080, verificando se o servidor serve o conteúdo de ./www/virtual/index.html ("Virtual Host Index").
+# Teste #11 (DELETE / com Host: virtual.local): Valida se o Virtual Host bloqueia métodos não permitidos com 405 Method Not Allowed.
+
+
 BIN="./build/webserv"
 SERVER_PID=""
 PASSED=0

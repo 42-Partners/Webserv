@@ -100,12 +100,8 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 		std::string scriptPath = loc->getRoot() + cleanPath;
 
 		struct stat buffer;
-		if (stat(scriptPath.c_str(), &buffer) != 0) {
-			HttpResponse response;
-			response.setStatus(STATUS_NOT_FOUND); // 404
-			response.setBody("Error: CGI Script Not Found");
-			return response;
-		}
+		if (stat(scriptPath.c_str(), &buffer) != 0)
+			return handleError( config, STATUS_NOT_FOUND );
 
 		return executeCgi(
 			request,
