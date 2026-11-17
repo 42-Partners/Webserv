@@ -42,7 +42,7 @@ std::vector<char*> buildCgiEnvironment(const HttpRequest& req, int serverPort, c
 HttpResponse executeCgi(const HttpRequest& req, const std::string& scriptPath, int serverPort, const std::string& serverName) {
     HttpResponse response;
     CgiSession session;
-    
+
     session.requestBody = req.getBody();
     session.bytesWritten = 0;
     session.isFinished = false;

@@ -82,6 +82,7 @@ EOF
 
 start_server() {
     stop_server
+    # $BIN "$1" > /dev/null 2>&1 &
     $BIN "$1" > /dev/null 2>&1 &
     SERVER_PID=$!
     for i in {1..30}; do

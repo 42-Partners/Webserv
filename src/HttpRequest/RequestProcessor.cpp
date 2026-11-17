@@ -91,20 +91,28 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 	}
 
 	if (isCgiRequest(request.getPath())) {
-        struct stat buffer;
-        if (stat((loc->getPath() + request.getPath()).c_str(), &buffer) != 0) {
-			HttpResponse response;
-            response.setStatus(STATUS_NOT_FOUND); // 404
-            response.setBody("Error: CGI Script Not Found");
-            return response;
-        }
+		std::string cleanPath = request.getPath();
+		size_t qPos = cleanPath.find('?');
+		if (qPos != std::string::npos) {
+			cleanPath = cleanPath.substr(0, qPos);
+		}
 
-        return executeCgi(
+		std::string scriptPath = loc->getRoot() + cleanPath;
+
+		struct stat buffer;
+		if (stat(scriptPath.c_str(), &buffer) != 0) {
+			HttpResponse response;
+			response.setStatus(STATUS_NOT_FOUND); // 404
+			response.setBody("Error: CGI Script Not Found");
+			return response;
+		}
+
+		return executeCgi(
 			request,
-			(loc->getPath() + request.getPath()),
+			scriptPath,
 			config.getPort(),
 			config.getServerNames().empty() ? "localhost" : config.getServerNames()[0]);
-    }
+	}
 
 	switch ( methodFromString( request.getMethod() ) ) {
 		case METHOD_GET: 
@@ -139,13 +147,24 @@ static void finalizeResponse( HttpResponse & response ) {
 
 
 bool isCgiRequest(const std::string& path) {
-    size_t dot = path.find_last_of(".");
-    if (dot != std::string::npos) {
-        std::string ext = path.substr(dot);
-        if (ext == ".php" || ext == ".py" || ext == ".sh") {
-            return true;
-        }
-    }
+	std::string cleanPath = path;
+	size_t queryPos = cleanPath.find('?');
+	if (queryPos != std::string::npos) {
+		cleanPath = cleanPath.substr(0, queryPos);
+	}
 
-    return false;
+	size_t lastSlash = cleanPath.find_last_of('/');
+	std::string filename = (lastSlash != std::string::npos) 
+						   ? cleanPath.substr(lastSlash + 1) 
+						   : cleanPath;
+
+	size_t dot = filename.find_last_of('.');
+	if (dot != std::string::npos) {
+		std::string ext = filename.substr(dot);
+		if (ext == ".php" || ext == ".py" || ext == ".sh") {
+			return true;
+		}
+	}
+
+	return false;
 }
