@@ -153,3 +153,8 @@ void	Connection::setHttpResponse(HttpResponse response)
 {
 	this->_httpResponse = response;
 }
+
+HttpResponse Connection::getHttpResponse() const
+{
+	return this->_httpResponse;
+}

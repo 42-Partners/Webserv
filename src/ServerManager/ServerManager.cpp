@@ -264,7 +264,7 @@ void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
 	HttpRequest::ParsingState state = conn->getRequest().getState();
 	std::cout << "[_handleConnectionRead] Requisição HTTP state: " << state << std::endl;
 	
-	if (state == HttpRequest::REQUEST_COMPLETE) {
+	if (state == HttpRequest::REQUEST_COMPLETE || state == HttpRequest::REQUEST_ERROR) {
 		std::cout << "[ServerManager] Requisição HTTP 100% completa no FD " << connectionFd << std::endl;
 
 		std::string hostHeader = conn->getRequest().getHeader("Host");
@@ -276,9 +276,9 @@ void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
 
 		conn->setHttpResponse(process(conn->getRequest(), conn->getServerConfig()));
 		_pollFds[pollIndex].events = POLLOUT;
-	} else if (state == HttpRequest::REQUEST_ERROR) {
-		std::cerr << "[_handleConnectionRead] Erro de parsing HTTP (400 Bad Request)." << std::endl;
-		_closeConnection(connectionFd, pollIndex);
+	// } else if (state == HttpRequest::REQUEST_ERROR) {
+	// 	std::cerr << "[_handleConnectionRead] Erro de parsing HTTP (400 Bad Request)." << std::endl;
+	// 	_closeConnection(connectionFd, pollIndex);
 
 	} else {
 		std::cout << "[_handleConnectionRead] Requisição parcial, aguardando mais dados..." << std::endl;
@@ -292,7 +292,7 @@ void ServerManager::_handleConnectionWrite(int connectionFd, size_t pollIndex) {
 
     const std::string& responseData = conn->getRawResponse();
     size_t totalToSend = responseData.size();
-    size_t alreadySent = conn->getBytesSent(); 
+    size_t alreadySent = conn->getBytesSent();
     ssize_t bytesSent = send(connectionFd, responseData.c_str() + alreadySent, totalToSend - alreadySent, 0);
 
     if (bytesSent < 0) {
@@ -304,11 +304,16 @@ void ServerManager::_handleConnectionWrite(int connectionFd, size_t pollIndex) {
     }
     conn->addBytesSent(bytesSent);
     if (conn->getBytesSent() >= totalToSend) {
-        std::cout << "[ServerManager] Resposta 100% enviada para o FD " << connectionFd << std::endl;
-        _closeConnection(connectionFd, pollIndex);
+		std::cout << "[ServerManager] Resposta 100% enviada para o FD " << connectionFd << std::endl;
+        // _closeConnection(connectionFd, pollIndex);
     } else {
-        _pollFds[pollIndex].events = POLLOUT;
+		_pollFds[pollIndex].events = POLLOUT;
     }
+	if(conn->getHttpResponse().getKeepAlive() == false)
+	{
+		_closeConnection(connectionFd, pollIndex);
+		return;
+	}
 }
 
 
