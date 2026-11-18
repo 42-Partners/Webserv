@@ -103,11 +103,19 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 		if (stat(scriptPath.c_str(), &buffer) != 0)
 			return handleError( config, STATUS_NOT_FOUND );
 
-		return executeCgi(
+		HttpResponse res = executeCgi(
 			request,
 			scriptPath,
 			config.getPort(),
 			config.getServerNames().empty() ? "localhost" : config.getServerNames()[0]);
+
+		if (res.getStatusCode() >= 400){
+			if (res.getStatusCode() >= 500) {
+				res.setKeepAlive(false);
+			}
+			handleError(config, res.getStatusCode());
+		}
+		return res;
 	}
 
 	switch ( methodFromString( request.getMethod() ) ) {
