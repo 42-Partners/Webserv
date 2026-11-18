@@ -8,6 +8,7 @@
 
 #include <cassert>
 #include <ctime>
+#include <dirent.h>
 #include <string>
 #include <vector>
 
@@ -53,6 +54,74 @@ static const LocationConfig * resolveLocation( const std::string & requestPath, 
 	}
 
 	return loc;
+}
+
+static std::string escapeHtml(const std::string& value) {
+	std::string escaped;
+	for (size_t i = 0; i < value.size(); ++i) {
+		switch (value[i]) {
+			case '&': escaped += "&amp;"; break;
+			case '<': escaped += "&lt;"; break;
+			case '>': escaped += "&gt;"; break;
+			case '"': escaped += "&quot;"; break;
+			case '\'': escaped += "&#39;"; break;
+			default: escaped += value[i]; break;
+		}
+	}
+	return escaped;
+}
+
+static bool tryHandleAutoindex(
+	const HttpRequest& request,
+	const ServerConfig& config,
+	const LocationConfig& loc,
+	HttpResponse& response) {
+	if (!loc.getAutoindex())
+		return false;
+
+	std::string directoryPath = loc.getRoot();
+	if (directoryPath.empty()
+		|| directoryPath[directoryPath.size() - 1] != '/'
+		|| request.getPath()[0] != '/')
+		directoryPath += request.getPath();
+	else
+		directoryPath += request.getPath().substr(1);
+	struct stat info;
+	if (stat(directoryPath.c_str(), &info) != 0 || !S_ISDIR(info.st_mode))
+		return false;
+
+	if (!loc.getIndex().empty()) {
+		std::string indexPath = directoryPath;
+		if (indexPath[indexPath.size() - 1] != '/')
+			indexPath += '/';
+		indexPath += loc.getIndex();
+		if (stat(indexPath.c_str(), &info) == 0)
+			return false;
+	}
+
+	DIR* directory = opendir(directoryPath.c_str());
+	if (!directory) {
+		response = handleError(config, STATUS_FORBIDDEN);
+		return true;
+	}
+
+	std::string listing = "<html><body><ul>";
+	struct dirent* entry;
+	while ((entry = readdir(directory)) != NULL) {
+		std::string name(entry->d_name);
+		if (name == "." || name == "..")
+			continue;
+		std::string escapedName = escapeHtml(name);
+		listing += "<li><a href=\"" + escapedName + "\">"
+			+ escapedName + "</a></li>";
+	}
+	closedir(directory);
+
+	listing += "</ul></body></html>";
+	response.setStatus(STATUS_OK);
+	response.setHeader("Content-Type", "text/html");
+	response.setBody(listing);
+	return true;
 }
 
 static Methods methodFromString( const std::string & method ) {
@@ -115,8 +184,12 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 	}
 
 	switch ( methodFromString( request.getMethod() ) ) {
-		case METHOD_GET: 
+		case METHOD_GET: {
+			HttpResponse autoindexResponse;
+			if (tryHandleAutoindex(request, config, *loc, autoindexResponse))
+				return autoindexResponse;
 			return handleGet( request, config, *loc );
+		}
 		case METHOD_DELETE:
 			return handleDelete( request, config, *loc );
 		case METHOD_POST:

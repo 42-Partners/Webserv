@@ -266,8 +266,7 @@ void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
 			return;
 		}
 
-		buffer[bytesRead] = '\0';
-		accumulatedData += buffer;
+		accumulatedData.append(buffer, static_cast<size_t>(bytesRead));
 	}
 	Connection* conn = _connections[connectionFd];
 	if (!conn) return;

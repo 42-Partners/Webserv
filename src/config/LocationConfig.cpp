@@ -76,6 +76,9 @@ void LocationConfig::addAllowedMethod(const std::string& method) {
 }
 
 bool LocationConfig::isMethodAllowed(const std::string& method) const {
+    if (_allowedMethods.empty())
+        return method == "GET";
+
     for (size_t i = 0; i < this->_allowedMethods.size(); i++) {
         if (this->_allowedMethods[i] == method) return true;
     }

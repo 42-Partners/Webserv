@@ -62,6 +62,14 @@ HttpResponse handleGet(const HttpRequest & request, const ServerConfig & config,
     if (stat(filePath.c_str(), &fileInfo) != 0)
         return handleError(config, STATUS_NOT_FOUND); // 404
 
+    if (S_ISDIR(fileInfo.st_mode) && !loc.getIndex().empty()) {
+        if (filePath[filePath.size() - 1] != '/')
+            filePath += '/';
+        filePath += loc.getIndex();
+        if (stat(filePath.c_str(), &fileInfo) != 0)
+            return handleError(config, STATUS_NOT_FOUND); // 404
+    }
+
     if (access(filePath.c_str(), R_OK) != 0)
         return handleError(config, STATUS_FORBIDDEN); // 403
 
@@ -91,7 +99,7 @@ HttpResponse handleDelete(const HttpRequest & request, const ServerConfig & conf
         return handleError(config, STATUS_METHOD_NOT_ALLOWED); // 405
 
     std::string requestPath = request.getPath();
-    std::string filePath = loc.getRoot() + requestPath;
+    std::string filePath = resolveFilePath(loc, requestPath);
 
     struct stat fileInfo;
     if (stat(filePath.c_str(), &fileInfo) != 0)
