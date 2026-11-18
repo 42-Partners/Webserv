@@ -52,34 +52,22 @@ std::string getMimeType(const std::string& path) {
 HttpResponse handleGet(const HttpRequest & request, const ServerConfig & config, const LocationConfig & loc) {
     HttpResponse response;
     (void)config;
-    if (!loc.isMethodAllowed("GET")) {
-        response.setStatus(STATUS_METHOD_NOT_ALLOWED); // 405
-        response.setBody("Error: GET method not allowed for this route.");
-        return response;
-    } 
+    if (!loc.isMethodAllowed("GET"))
+        return handleError(config, STATUS_METHOD_NOT_ALLOWED); // 405
 
     std::string requestPath = request.getPath();
     std::string filePath = resolveFilePath(loc, requestPath);
 
     struct stat fileInfo;
-    if (stat(filePath.c_str(), &fileInfo) != 0) {
-        response.setStatus(STATUS_NOT_FOUND); // 404
-        response.setBody("Error: 404 Not Found");
-        return response;
-    }
+    if (stat(filePath.c_str(), &fileInfo) != 0)
+        return handleError(config, STATUS_NOT_FOUND); // 404
 
-    if (access(filePath.c_str(), R_OK) != 0) {
-        response.setStatus(STATUS_FORBIDDEN); // 403
-        response.setBody("Error: 403 Forbidden");
-        return response;
-    }
+    if (access(filePath.c_str(), R_OK) != 0)
+        return handleError(config, STATUS_FORBIDDEN); // 403
 
     std::ifstream file(filePath.c_str(), std::ios::binary);
-    if (!file.is_open()) {
-        response.setStatus(STATUS_INTERNAL_SERVER_ERROR); // 500
-        response.setBody("Error: Internal Server Error");
-        return response;
-    }
+    if (!file.is_open()) 
+        return handleError(config, STATUS_INTERNAL_SERVER_ERROR); // 500
 
     std::ostringstream ss;
     ss << file.rdbuf();
@@ -99,33 +87,21 @@ HttpResponse handleGet(const HttpRequest & request, const ServerConfig & config,
 HttpResponse handleDelete(const HttpRequest & request, const ServerConfig & config, const LocationConfig & loc) {
     HttpResponse response;
     (void)config;
-    if (!loc.isMethodAllowed("DELETE")) {
-        response.setStatus(STATUS_METHOD_NOT_ALLOWED); // 405
-        response.setBody("Error: DELETE method not allowed for this route.");
-        return response;
-    }
+    if (!loc.isMethodAllowed("DELETE"))
+        return handleError(config, STATUS_METHOD_NOT_ALLOWED); // 405
 
     std::string requestPath = request.getPath();
     std::string filePath = loc.getRoot() + requestPath;
 
     struct stat fileInfo;
-    if (stat(filePath.c_str(), &fileInfo) != 0) {
-        response.setStatus(STATUS_NOT_FOUND); // 404
-        response.setBody("Error: 404 Not Found");
-        return response;
-    }
+    if (stat(filePath.c_str(), &fileInfo) != 0)
+        return handleError(config, STATUS_NOT_FOUND); // 404
 
-    if (access(filePath.c_str(), W_OK) != 0) {
-        response.setStatus(STATUS_FORBIDDEN); // 403
-        response.setBody("Error: 403 Forbidden");
-        return response;
-    }
+    if (access(filePath.c_str(), W_OK) != 0)
+        return handleError(config, STATUS_FORBIDDEN); // 403
 
-    if (unlink(filePath.c_str()) != 0) {
-        response.setStatus(STATUS_INTERNAL_SERVER_ERROR); // 500
-        response.setBody("Error: Could not delete file.");
-        return response;
-    }
+    if (unlink(filePath.c_str()) != 0)
+        return handleError(config, STATUS_INTERNAL_SERVER_ERROR); // 500
 
     response.setStatus(STATUS_NO_CONTENT); // 204
     response.setBody("File deleted successfully.");
