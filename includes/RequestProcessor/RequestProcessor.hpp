@@ -4,7 +4,6 @@
 #include "config/ServerConfig.hpp"
 #include "HttpRequest/HttpRequest.hpp"
 #include "HttpResponse/HttpResponse.hpp"
-#include "Handlers/Cgihandler.hpp"
 
 enum Methods {
 	METHOD_GET,

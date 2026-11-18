@@ -1,4 +1,5 @@
 #include "config/LocationConfig.hpp"
+#include "Handlers/CgiHandler.hpp"
 #include "Handlers/ErrorHandler.hpp"
 #include "Handlers/RedirectHandler.hpp"
 #include "Handlers/StaticFileHandler.hpp"
