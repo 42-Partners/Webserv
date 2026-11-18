@@ -57,6 +57,10 @@ bool HttpRequest::hasHeader( const std::string & key ) const {
 	return false;
 }
 
+void HttpRequest::setMaxBodySize( size_t maxBodySize ) {
+	this->_maxBodySize = maxBodySize;
+}
+
 void HttpRequest::clear( ) {
 	this->_errorCode = 0;
 	this->_state = PARSING_REQUEST_LINE;

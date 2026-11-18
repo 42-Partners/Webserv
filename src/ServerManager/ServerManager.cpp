@@ -1,5 +1,6 @@
 #include "ServerManager/ServerManager.hpp"
 #include "RequestProcessor/RequestProcessor.hpp"
+#include "Utils/Utils.hpp"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -271,6 +272,7 @@ void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
 	Connection* conn = _connections[connectionFd];
 	if (!conn) return;
 	conn->getReadBuffer().append(accumulatedData);
+	_prepareRequest(conn);
 	conn->getRequest().feed(conn->getReadBuffer());
 
 	HttpRequest::ParsingState state = conn->getRequest().getState();
@@ -322,6 +324,7 @@ void ServerManager::_handleConnectionWrite(int connectionFd, size_t pollIndex) {
 		}
 
 		conn->resetForNextRequest();
+		_prepareRequest(conn);
 		conn->getRequest().feed(conn->getReadBuffer());
 		HttpRequest::ParsingState state = conn->getRequest().getState();
 		if (state == HttpRequest::REQUEST_COMPLETE || state == HttpRequest::REQUEST_ERROR) {
@@ -368,4 +371,60 @@ const ServerConfig* ServerManager::_getConfigForListenSocket(int listenFd) const
 		return &_serverConfigs[0];
 	}
 	return NULL;
+}
+
+const ServerConfig* ServerManager::_getConfigForRequest(
+	const ServerConfig& defaultConfig,
+	const std::string& hostHeader) const {
+	std::string host = toLower(trim(hostHeader));
+	size_t colon = host.find(':');
+	if (colon != std::string::npos)
+		host = host.substr(0, colon);
+
+	for (size_t i = 0; i < _serverConfigs.size(); ++i) {
+		const ServerConfig& config = _serverConfigs[i];
+		if (config.getHost() != defaultConfig.getHost()
+			|| config.getPort() != defaultConfig.getPort())
+			continue;
+
+		const std::vector<std::string>& names = config.getServerNames();
+		for (size_t j = 0; j < names.size(); ++j) {
+			if (toLower(names[j]) == host)
+				return &config;
+		}
+	}
+
+	return &defaultConfig;
+}
+
+void ServerManager::_prepareRequest(Connection* connection) const {
+	HttpRequest& request = connection->getRequest();
+	if (request.getState() != HttpRequest::PARSING_REQUEST_LINE
+		&& request.getState() != HttpRequest::PARSING_HEADERS)
+		return;
+
+	const std::string& buffer = connection->getReadBuffer();
+	size_t headerEnd = buffer.find("\r\n\r\n");
+	if (headerEnd == std::string::npos)
+		return;
+
+	std::string hostHeader;
+	std::istringstream headers(buffer.substr(0, headerEnd));
+	std::string line;
+	while (std::getline(headers, line)) {
+		if (!line.empty() && line[line.size() - 1] == '\r')
+			line.erase(line.size() - 1);
+		size_t colon = line.find(':');
+		if (colon == std::string::npos)
+			continue;
+		if (toLower(trim(line.substr(0, colon))) == "host") {
+			hostHeader = trim(line.substr(colon + 1));
+			break;
+		}
+	}
+
+	const ServerConfig* config = _getConfigForRequest(
+		connection->getDefaultServerConfig(), hostHeader);
+	connection->setServerConfig(config);
+	request.setMaxBodySize(config->getClientMaxBodySize());
 }

@@ -1,5 +1,4 @@
-#include "Handlers/CgiHandler.hpp"
-
+#include "Handlers/Cgihandler.hpp"
 void setNonBlocking(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETFL, flags | O_NONBLOCK);
