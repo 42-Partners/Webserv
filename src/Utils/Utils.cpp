@@ -2,8 +2,6 @@
 
 #include <algorithm>
 #include <cctype>
-#include <cerrno>
-#include <cstdlib>
 #include <limits>
 
 static const std::string TCHAR_SYMBOLS = "!#$%&'*+-.^_`|~";

@@ -6,7 +6,6 @@
 #include "RequestProcessor/RequestProcessor.hpp"
 #include "StatusCode/StatusCode.hpp"
 
-#include <cassert>
 #include <ctime>
 #include <string>
 #include <vector>
@@ -73,8 +72,6 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 		response.setKeepAlive( false );
 		return response;
 	}
-
-	assert( request.getState() == HttpRequest::REQUEST_COMPLETE ); // tirar antes da entrega
 
 	const LocationConfig * loc = resolveLocation( request.getPath(), config );
 	if  ( !loc )
