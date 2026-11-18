@@ -1,6 +1,41 @@
 #include "Handlers/CgiHandler.hpp"
+#include "Handlers/ErrorHandler.hpp"
 
-void setNonBlocking(int fd) {
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+#include <fcntl.h>
+#include <poll.h>
+#include <signal.h>
+#include <sstream>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <vector>
+
+static HttpResponse executeCgi(const HttpRequest& req, const std::string& scriptPath, int serverPort, const std::string& serverName);
+
+HttpResponse handleCgi(const HttpRequest & request, const ServerConfig & config, const LocationConfig & loc) {
+    std::string scriptPath = loc.getRoot() + request.getPath();
+
+		struct stat buffer;
+		if (stat(scriptPath.c_str(), &buffer) != 0 || !S_ISREG(buffer.st_mode))
+			return handleError(config, STATUS_NOT_FOUND);
+        if (access(scriptPath.c_str(), X_OK) != 0)
+            return handleError(config, STATUS_FORBIDDEN);
+
+		HttpResponse res = executeCgi( 
+			request,
+			scriptPath,
+			config.getPort(),
+			config.getServerNames().empty() ? "localhost" : config.getServerNames()[0]);
+
+		if (res.getStatusCode() >= 400)
+			return handleError(config, res.getStatusCode());
+		return res;
+}
+
+static void setNonBlocking(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
@@ -16,7 +51,7 @@ static void freeEnvArray(std::vector<char*>& env) {
     }
 }
 
-std::vector<char*> buildCgiEnvironment(const HttpRequest& req, int serverPort, const std::string& serverName) {
+static std::vector<char*> buildCgiEnvironment(const HttpRequest& req, int serverPort, const std::string& serverName) {
     std::vector<char*> env;
 
     env.push_back(createEnvString("REQUEST_METHOD", req.getMethod()));
@@ -39,7 +74,7 @@ std::vector<char*> buildCgiEnvironment(const HttpRequest& req, int serverPort, c
     return env;
 }
 
-HttpResponse executeCgi(const HttpRequest& req, const std::string& scriptPath, int serverPort, const std::string& serverName) {
+static HttpResponse executeCgi(const HttpRequest& req, const std::string& scriptPath, int serverPort, const std::string& serverName) {
     HttpResponse response;
     CgiSession session;
 

@@ -7,14 +7,12 @@
 #include "RequestProcessor/RequestProcessor.hpp"
 #include "StatusCode/StatusCode.hpp"
 
-#include <cassert>
 #include <ctime>
 #include <string>
 #include <vector>
 
 static HttpResponse route( const HttpRequest & request, const ServerConfig & config );
 static void finalizeResponse( HttpResponse & response );
-bool isCgiRequest(const std::string& path);
 
 HttpResponse process( const HttpRequest & request, const ServerConfig & config ) { 
 	HttpResponse response = route( request, config );
@@ -26,7 +24,7 @@ HttpResponse process( const HttpRequest & request, const ServerConfig & config )
 
 	return response;
 }
-// assume path nao vazio e começando com /
+
 static const LocationConfig * resolveLocation( const std::string & requestPath, const ServerConfig & config ) {
 	const LocationConfig * loc = NULL;
 
@@ -69,14 +67,29 @@ static Methods methodFromString( const std::string & method ) {
 	return METHOD_UNKNOWN;
 }
 
+bool isCgiRequest(const std::string& path) {
+	size_t lastSlash = path.find_last_of('/');
+	std::string filename = (lastSlash != std::string::npos) 
+						   ? path.substr(lastSlash + 1) 
+						   : path;
+
+	size_t dot = filename.find_last_of('.');
+	if (dot != std::string::npos) {
+		std::string ext = filename.substr(dot);
+		if (ext == ".php" || ext == ".py" || ext == ".sh") { //config da location ou hardcoded?
+			return true;
+		}
+	}
+
+	return false;
+}
+
 static HttpResponse route( const HttpRequest & request, const ServerConfig & config ) {
 	if ( request.getState() == HttpRequest::REQUEST_ERROR ) {
 		HttpResponse response = handleError( config, request.getErrorCode() );
 		response.setKeepAlive( false );
 		return response;
 	}
-
-	assert( request.getState() == HttpRequest::REQUEST_COMPLETE ); // tirar antes da entrega
 
 	const LocationConfig * loc = resolveLocation( request.getPath(), config );
 	if  ( !loc )
@@ -91,29 +104,8 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 		return response;
 	}
 
-	if (isCgiRequest(request.getPath())) {
-		std::string cleanPath = request.getPath();
-		size_t qPos = cleanPath.find('?');
-		if (qPos != std::string::npos) {
-			cleanPath = cleanPath.substr(0, qPos);
-		}
-
-		std::string scriptPath = loc->getRoot() + cleanPath;
-
-		struct stat buffer;
-		if (stat(scriptPath.c_str(), &buffer) != 0)
-			return handleError( config, STATUS_NOT_FOUND );
-
-		HttpResponse res = executeCgi(
-			request,
-			scriptPath,
-			config.getPort(),
-			config.getServerNames().empty() ? "localhost" : config.getServerNames()[0]);
-
-		if (res.getStatusCode() >= 400)
-			handleError(config, res.getStatusCode());
-		return res;
-	}
+	if ( isCgiRequest(request.getPath()) )
+		return handleCgi( request, config, *loc );
 
 	switch ( methodFromString( request.getMethod() ) ) {
 		case METHOD_GET: 
@@ -144,28 +136,4 @@ static void finalizeResponse( HttpResponse & response ) {
 
 	if ( !response.getKeepAlive() )
 		response.setHeader( "Connection", "close" );
-}
-
-
-bool isCgiRequest(const std::string& path) {
-	std::string cleanPath = path;
-	size_t queryPos = cleanPath.find('?');
-	if (queryPos != std::string::npos) {
-		cleanPath = cleanPath.substr(0, queryPos);
-	}
-
-	size_t lastSlash = cleanPath.find_last_of('/');
-	std::string filename = (lastSlash != std::string::npos) 
-						   ? cleanPath.substr(lastSlash + 1) 
-						   : cleanPath;
-
-	size_t dot = filename.find_last_of('.');
-	if (dot != std::string::npos) {
-		std::string ext = filename.substr(dot);
-		if (ext == ".php" || ext == ".py" || ext == ".sh") {
-			return true;
-		}
-	}
-
-	return false;
 }

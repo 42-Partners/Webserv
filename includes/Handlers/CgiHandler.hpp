@@ -2,21 +2,15 @@
 #define CGIHANDLER_HPP
 
 #include "config/LocationConfig.hpp"
+#include "config/ServerConfig.hpp"
 #include "HttpRequest/HttpRequest.hpp"
 #include "HttpResponse/HttpResponse.hpp"
 #include "Utils/Utils.hpp"
 #include "StatusCode/StatusCode.hpp"
-#include <vector>
+
+#include <iostream>
 #include <sstream>
 #include <string>
-#include <unistd.h>
-#include <fcntl.h>
-#include <poll.h>
-#include <iostream>
-#include <cstdlib>
-#include <sys/wait.h>
-#include <cstdlib>
-#include <cstring>
 
 struct CgiSession {
     int pid;
@@ -30,12 +24,6 @@ struct CgiSession {
     bool isFinished;
 };
 
-std::vector<char*> buildCgiEnvironment(const HttpRequest& req, int serverPort, const std::string& serverName);
-
-HttpResponse executeCgi(
-    const HttpRequest& req,
-    const std::string& scriptPath,
-    int serverPort,
-    const std::string& serverName);
+HttpResponse handleCgi(const HttpRequest & request, const ServerConfig & config, const LocationConfig & loc);
 
 #endif
