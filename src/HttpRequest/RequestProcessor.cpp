@@ -109,12 +109,8 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 			config.getPort(),
 			config.getServerNames().empty() ? "localhost" : config.getServerNames()[0]);
 
-		if (res.getStatusCode() >= 400){
-			if (res.getStatusCode() >= 500) {
-				res.setKeepAlive(false);
-			}
+		if (res.getStatusCode() >= 400)
 			handleError(config, res.getStatusCode());
-		}
 		return res;
 	}
 
