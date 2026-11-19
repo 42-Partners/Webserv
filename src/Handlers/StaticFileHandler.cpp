@@ -34,7 +34,7 @@ static std::string resolveFilePath( const LocationConfig & loc, const std::strin
 	return filePath;
 }
 
-std::string getMimeType(const std::string& path) {
+static std::string getMimeType(const std::string& path) {
     size_t slashPos = path.find_last_of('/');
     size_t dotPos = path.find_last_of(".");
 
