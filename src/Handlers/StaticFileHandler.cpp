@@ -1,3 +1,4 @@
+#include "Handlers/AutoIndexHandler.hpp"
 #include "Handlers/ErrorHandler.hpp"
 #include "Handlers/RedirectHandler.hpp"
 #include "Handlers/StaticFileHandler.hpp"
@@ -93,7 +94,7 @@ HttpResponse handleGet(const HttpRequest & request, const ServerConfig & config,
             return makeRedirect(STATUS_MOVED_PERMANENTLY, target);
         }
     
-        if (access(filePath.c_str(), R_OK | X_OK) != 0)
+        if (access(filePath.c_str(), X_OK) != 0)
             return handleError(config, STATUS_FORBIDDEN);
 
         std::string dirPath = filePath;
@@ -110,8 +111,8 @@ HttpResponse handleGet(const HttpRequest & request, const ServerConfig & config,
                 return serveFile(config, indexPath);
         }
         
-        // if (loc.getAutoindex())
-        //     return handleAutoindex(config, dirPath, requestPath);
+        if (loc.getAutoindex())
+            return handleAutoindex(config, dirPath, requestPath);
 
         return handleError(config, STATUS_FORBIDDEN);
     }

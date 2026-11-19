@@ -127,3 +127,9 @@ int charToInt( char c ) {
 		return c - 'a' + 10;
 	return c - '0';
 }
+
+char intToHex( int value ) {
+	if ( value < 10 ) return value + '0';
+	
+	return value + 'A' - 10;
+}

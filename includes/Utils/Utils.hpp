@@ -20,4 +20,6 @@ bool hasControlChars( const std::string & );
 
 int charToInt( char );
 
+char intToHex( int );
+
 #endif
