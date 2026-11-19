@@ -21,6 +21,7 @@ class Connection {
 private:
     int                 _fd;
     const ServerConfig* _serverConfig;
+    const ServerConfig* _defaultServerConfig;
     std::string         _ip;
     std::string         _readBuffer;
     std::string         _writeBuffer;
@@ -47,11 +48,15 @@ public:
     std::string&        getWriteBuffer();
     HttpRequest&        getRequest();
     void matchAndSetServerConfig(const std::string& hostHeader);
+    void setServerConfig(const ServerConfig* config);
     const ServerConfig& getServerConfig() const;
+    const ServerConfig& getDefaultServerConfig() const;
     std::string getRawResponse();
     size_t getBytesSent() const;
     void addBytesSent(size_t n);
     void resetBytesSent();
+    HttpResponse getHttpResponse() const;
+
     // Esta função pertence ao objeto que gerencia a conexão do connection. Ela orquestra o reset de 
     // todos os componentes da conexão para permitir que o mesmo socket TCP leia uma nova requisição vinda 
     // do navegador sem precisar fechar a porta (accept/close).

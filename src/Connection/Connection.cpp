@@ -3,6 +3,7 @@
 Connection::Connection()
 	: _fd(-1),
 	_serverConfig(NULL),
+	_defaultServerConfig(NULL),
 	_ip(),
 	_readBuffer(),
 	_writeBuffer(),
@@ -16,6 +17,7 @@ Connection::Connection()
 Connection::Connection(int ConnectionFd, const std::string& ConnectionIp, const ServerConfig* config)
 	: _fd(ConnectionFd),
 	_serverConfig(config),
+	_defaultServerConfig(config),
 	_ip(ConnectionIp),
 	_readBuffer(),
 	_writeBuffer(),
@@ -34,6 +36,7 @@ Connection::~Connection() {
 Connection::Connection(const Connection& other)
 	: _fd(other._fd),
 	_serverConfig(other._serverConfig),
+	_defaultServerConfig(other._defaultServerConfig),
 	_ip(other._ip),
 	_readBuffer(other._readBuffer),
 	_writeBuffer(other._writeBuffer),
@@ -49,6 +52,7 @@ Connection& Connection::operator=(const Connection& other) {
 		delete _httpRequest;
 		_fd = other._fd;
 		_serverConfig = other._serverConfig;
+		_defaultServerConfig = other._defaultServerConfig;
 		_ip = other._ip;
 		_readBuffer = other._readBuffer;
 		_writeBuffer = other._writeBuffer;
@@ -106,9 +110,9 @@ void Connection::resetForNextRequest() {
 	if (this->_httpRequest != NULL) {
 		this->_httpRequest->clear();
 	}
-	this->_readBuffer.clear();
 	this->_writeBuffer.clear();
-	// this->_httpResponse.clear();
+	this->_httpResponse = HttpResponse();
+	this->resetBytesSent();
 	this->_connectionState = READING_HEADER;
 	this->updateLastActivity();
 }
@@ -129,6 +133,14 @@ void Connection::resetForNextRequest() {
 const ServerConfig& Connection::getServerConfig() const
 {
 	return *this->_serverConfig;
+}
+
+void Connection::setServerConfig(const ServerConfig* config) {
+	this->_serverConfig = config;
+}
+
+const ServerConfig& Connection::getDefaultServerConfig() const {
+	return *this->_defaultServerConfig;
 }
 
 
@@ -152,4 +164,9 @@ void Connection::resetBytesSent() {
 void	Connection::setHttpResponse(HttpResponse response)
 {
 	this->_httpResponse = response;
+}
+
+HttpResponse Connection::getHttpResponse() const
+{
+	return this->_httpResponse;
 }

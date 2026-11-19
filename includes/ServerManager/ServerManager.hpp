@@ -29,10 +29,14 @@ private:
 	void _closeConnectionConnection(int connectionFd, size_t pollIndex);
 	void _cleanupListeningSockets();
 	size_t _findPollIndex(int fd) const;
+	void _prepareRequest(Connection* connection) const;
 
 	ServerManager(const ServerManager& other);
 	ServerManager& operator=(const ServerManager& other);
 	const ServerConfig* _getConfigForListenSocket(int listenFd) const;
+	const ServerConfig* _getConfigForRequest(
+		const ServerConfig& defaultConfig,
+		const std::string& hostHeader) const;
 
 public:
 	ServerManager();
