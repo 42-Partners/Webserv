@@ -9,7 +9,6 @@ class HttpResponse {
 		HttpResponse();
 		~HttpResponse();
 
-		bool isError() const;
 		bool getKeepAlive() const;
 
 		int getStatusCode() const;

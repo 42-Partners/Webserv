@@ -29,6 +29,7 @@ SRC			:=	src/main.cpp \
 				src/Handlers/RedirectHandler.cpp \
 				src/Handlers/StaticFileHandler.cpp  \
 				src/Handlers/UploadHandler.cpp  \
+				src/Handlers/CgiHandler.cpp  \
 				src/HttpRequest/HttpRequest.cpp  \
 				src/HttpRequest/RequestParser.cpp  \
 				src/HttpRequest/RequestProcessor.cpp  \
@@ -101,5 +102,17 @@ $(TEST_REQUEST): $(TEST_REQUEST_SRC) | $(TEST_DIR)
 test: $(TEST_REQUEST)
 	@echo "$(BLUE)🧪 Running request line tests...$(RESET)"
 	@./$(TEST_REQUEST)
+
+all_tests: $(NAME)
+	@echo "$(BLUE)🧪 Running all tests...$(RESET)"
+	./tests/integration/base_test.sh
+	./tests/integration/cgi_test.sh
+	./tests/integration/stress_test.sh
+	@echo "$(GREEN)✅ All tests passed successfully$(RESET)"
+
+subtest: $(NAME)
+	./build/webserv &
+	@echo "$(BLUE)🧪 Running subject tester...$(RESET)"
+	./tests/tester http://localhost:8080
 
 .PHONY: all clean fclean re test
