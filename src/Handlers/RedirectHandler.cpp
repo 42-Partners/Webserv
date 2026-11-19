@@ -11,7 +11,6 @@ HttpResponse makeRedirect( int status, const std::string & target ) {
 
 	response.setStatus(status);
 	response.setHeader("Location", target);
-	response.setBody("<html><body>Redirecting to " + target + "</body></html>");
 
 	return response;
 }
