@@ -1,10 +1,12 @@
 #include "Handlers/AutoIndexHandler.hpp"
 #include "Handlers/ErrorHandler.hpp"
+#include "Logger/Logger.hpp"
 #include "StatusCode/StatusCode.hpp"
 #include "Utils/Utils.hpp"
 
 #include <algorithm>
 #include <cerrno>
+#include <cstring>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <vector>
@@ -14,11 +16,14 @@ static bool compareFiles( const fileStruct & a, const fileStruct & b );
 
 HttpResponse handleAutoindex(const ServerConfig & config, const std::string & dirPath, const std::string & requestPath) {
 	DIR * dir = opendir( dirPath.c_str() );
-	if ( !dir )
-		return handleError(config, errno == EACCES ? STATUS_FORBIDDEN
-								: (errno == ENOENT || errno == ENOTDIR ) ? STATUS_NOT_FOUND
+	if ( !dir ) {
+		int err = errno;
+		Logger::error("AutoIndex", "opendir falhou em " + dirPath + ": " + strerror(err));
+		return handleError(config, err == EACCES ? STATUS_FORBIDDEN
+								: (err == ENOENT || err == ENOTDIR ) ? STATUS_NOT_FOUND
 								: STATUS_INTERNAL_SERVER_ERROR );	
-
+	}
+		
 	std::vector<fileStruct> files;
 
 	struct dirent * dirEntry;
@@ -43,11 +48,14 @@ HttpResponse handleAutoindex(const ServerConfig & config, const std::string & di
 	closedir( dir );
 
 	std::sort(files.begin(), files.end(), compareFiles);
+	Logger::info("AutoIndex", "listando " + requestPath);
 
 	HttpResponse response;
 	response.setStatus( STATUS_OK );
 	response.setBody( makeAutoIndex(requestPath, files) );
 	response.setHeader( "Content-Type", "text/html");
+
+	Logger::info("AutoIndex", "Autoindex generated for " + dirPath);
 
 	return response;
 }

@@ -5,7 +5,8 @@
 #include <vector>
 
 std::string toLower( std::string );
-std::string trim( const std::string & s );
+std::string toUpper( std::string );
+std::string trim( const std::string & );
 
 std::vector<std::string> split( const std::string &, const std::string & );
 
@@ -13,7 +14,7 @@ bool isDigit( char );
 bool isHexDigit( char );
 bool isUpper( char );
 bool isLower( char );
-bool isTchar(char c);
+bool isTchar( char );
 bool isToken( const std::string & );
 bool stringToSize( const std::string &, int, size_t & );
 bool hasControlChars( const std::string & );

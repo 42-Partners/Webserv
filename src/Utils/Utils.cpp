@@ -15,6 +15,15 @@ std::string toLower( std::string s ) {
 	return s;
 }
 
+static int safeToUpper( int c ) {
+    return std::toupper( static_cast<unsigned char>(c) );
+}
+
+std::string toUpper( std::string s ) {
+	std::transform( s.begin(), s.end(), s.begin(), safeToUpper );
+	return s;
+}
+
 std::string trim( const std::string & s ) {
 	size_t first = s.find_first_not_of(" \t");
 	if ( first == std::string::npos )

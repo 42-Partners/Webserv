@@ -35,6 +35,7 @@ SRC			:=	src/main.cpp \
 				src/HttpRequest/RequestProcessor.cpp  \
 				src/HttpResponse/ErrorPage.cpp  \
 				src/HttpResponse/HttpResponse.cpp  \
+				src/Logger/Logger.cpp  \
 				src/ServerManager/ServerManager.cpp \
 				src/Utils/Utils.cpp
 

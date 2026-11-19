@@ -1,6 +1,8 @@
 #include "Handlers/CgiHandler.hpp"
 #include "Handlers/ErrorHandler.hpp"
+#include "Logger/Logger.hpp"
 
+#include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
@@ -23,6 +25,8 @@ HttpResponse handleCgi(const HttpRequest & request, const ServerConfig & config,
 			return handleError(config, STATUS_NOT_FOUND);
         if (access(scriptPath.c_str(), X_OK) != 0)
             return handleError(config, STATUS_FORBIDDEN);
+
+        Logger::info("CGI Handler", "Executing CGI script: " + scriptPath);
 
 		HttpResponse res = executeCgi( 
 			request,
@@ -83,8 +87,9 @@ static HttpResponse executeCgi(const HttpRequest& req, const std::string& script
     session.isFinished = false;
 
     if (pipe(session.pipe_in) < 0 || pipe(session.pipe_out) < 0) {
+        Logger::error("CGI Handler", "Failed to create CGI pipes");
         response.setStatus(500);
-        response.setBody("Error: Internal Server Error (Pipe failed)");
+        response.setBody("Error: Internal Server Error (Pipe failed)"); //! errorhandler?
         return response;
     }
 
@@ -92,11 +97,12 @@ static HttpResponse executeCgi(const HttpRequest& req, const std::string& script
 
     session.pid = fork();
     if (session.pid < 0) {
+        Logger::error("CGI Handler", "Failed to fork CGI process");
         freeEnvArray(envp);
         close(session.pipe_in[0]); close(session.pipe_in[1]);
         close(session.pipe_out[0]); close(session.pipe_out[1]);
         response.setStatus(500);
-        response.setBody("Error: Internal Server Error (Fork failed)");
+        response.setBody("Error: Internal Server Error (Fork failed)"); //!errorhandler
         return response;
     }
 
@@ -149,7 +155,10 @@ static HttpResponse executeCgi(const HttpRequest& req, const std::string& script
         pfd[1].events = POLLIN;
 
         int ret = poll(pfd, 2, 100);
-        if (ret < 0) break;
+        if (ret < 0) {
+            Logger::error("CGI Handler", "CGI poll failed: " + std::string(strerror(errno)));
+            break;
+        }
         if (ret == 0) continue;
 
         if (pfd[0].revents & POLLOUT) {
@@ -183,22 +192,30 @@ static HttpResponse executeCgi(const HttpRequest& req, const std::string& script
     int statusCode = STATUS_OK; // 200
 
     if (timedOut) {
+        Logger::error("CGI Handler", "CGI script execution timed out");
+
         response.setStatus(STATUS_GATEWAY_TIMEOUT); // 504
-        response.setBody("Error: 504 Gateway Timeout (CGI script took too long to execute)");
+        response.setBody("Error: 504 Gateway Timeout (CGI script took too long to execute)"); //!errorhandler?
         return response;
     }
 
     if (WIFSIGNALED(status)) {
+        Logger::error("CGI Handler", "CGI process terminated by signal");
+
         response.setStatus(STATUS_INTERNAL_SERVER_ERROR); // 500
-        response.setBody("Error: 500 Internal Server Error (CGI crashed by signal)");
+        response.setBody("Error: 500 Internal Server Error (CGI crashed by signal)"); //!errorhandler?
         return response;
     }
 
     if (WIFEXITED(status)) {
         int exitCode = WEXITSTATUS(status);
         if (exitCode != 0) {
+            std::ostringstream ss;
+            ss << exitCode;
+            Logger::error("CGI Handler", "CGI process exited with status " + ss.str());
+
             response.setStatus(STATUS_INTERNAL_SERVER_ERROR); // 500
-            response.setBody("Error: 500 Internal Server Error (CGI exited with non-zero status)");
+            response.setBody("Error: 500 Internal Server Error (CGI exited with non-zero status)"); //!errorhandler?
             return response;
         }
     }

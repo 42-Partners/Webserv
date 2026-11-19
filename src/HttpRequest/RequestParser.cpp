@@ -1,5 +1,6 @@
 #include "HttpRequest/HttpRequest.hpp"
 #include "StatusCode/StatusCode.hpp"
+#include "Logger/Logger.hpp"
 #include "Utils/Utils.hpp"
 
 #include <sstream>
@@ -424,6 +425,11 @@ bool HttpRequest::parseTrailers( std::string & buffer ) {
 bool HttpRequest::setError( int code ) {
 	_errorCode = code;
 	_state = REQUEST_ERROR;
+
+	std::ostringstream ss;
+	ss << code;
+	Logger::error( "Request Parser", "Parsing failed -> " + ss.str() );
+
 	return false;
 }
 

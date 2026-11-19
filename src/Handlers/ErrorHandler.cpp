@@ -1,5 +1,6 @@
 #include "Handlers/ErrorHandler.hpp"
 #include "HttpResponse/ErrorPage.hpp"
+#include "Logger/Logger.hpp"
 
 #include <fstream>
 #include <sstream>
@@ -17,7 +18,11 @@ HttpResponse handleError( const ServerConfig & config, int error ) {
 	if ( error >= 500 )
 		response.setKeepAlive( false );
 
-	response.setHeader( "content-type", "text/html; charset=utf-8" );
+	response.setHeader( "Content-Type", "text/html; charset=utf-8" );
+
+	std::ostringstream ss;
+	ss << response.getStatusCode();
+	Logger::error("Error Handler", "HTTP error -> " + ss.str());
 
 	return response;
 }
