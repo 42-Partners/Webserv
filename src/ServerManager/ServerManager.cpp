@@ -264,7 +264,7 @@ void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
 	HttpRequest::ParsingState state = conn->getRequest().getState();
 	std::cout << "[_handleConnectionRead] Requisição HTTP state: " << state << std::endl;
 	
-	if (state == HttpRequest::REQUEST_COMPLETE) {
+	if (state == HttpRequest::REQUEST_COMPLETE || state == HttpRequest::REQUEST_ERROR) {
 		std::cout << "[ServerManager] Requisição HTTP 100% completa no FD " << connectionFd << std::endl;
 
 		std::string hostHeader = conn->getRequest().getHeader("Host");
@@ -277,7 +277,7 @@ void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
 		conn->setHttpResponse(process(conn->getRequest(), conn->getServerConfig()));
 		_pollFds[pollIndex].events = POLLOUT;
 	} else if (state == HttpRequest::REQUEST_ERROR) {
-		std::cerr << "[_handleConnectionRead] Erro de parsing HTTP (400 Bad Request)." << std::endl;
+		std::cerr << "[_handleConnectionRead] Erro de parsing HTTP " << conn->getRequest().getErrorCode() << std::endl;
 		_closeConnection(connectionFd, pollIndex);
 
 	} else {

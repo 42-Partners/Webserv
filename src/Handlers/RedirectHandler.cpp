@@ -1,12 +1,16 @@
 #include "Handlers/RedirectHandler.hpp"
 
 HttpResponse handleRedirect( const LocationConfig & loc ) {
+	const std::pair<int, std::string> & redirect = loc.getRedirect();
+	
+	return makeRedirect(redirect.first, redirect.second);
+}
+
+HttpResponse makeRedirect( int status, const std::string & target ) {
 	HttpResponse response;
 
-	const std::pair<int, std::string> & redirect = loc.getRedirect();
-
-	response.setStatus( redirect.first );
-	response.setHeader( "Location", redirect.second );
+	response.setStatus(status);
+	response.setHeader("Location", target);
 
 	return response;
 }

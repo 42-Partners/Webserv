@@ -5,6 +5,7 @@
 #include "Handlers/StaticFileHandler.hpp"
 #include "Handlers/UploadHandler.hpp"
 #include "RequestProcessor/RequestProcessor.hpp"
+#include "Logger/Logger.hpp"
 #include "StatusCode/StatusCode.hpp"
 
 #include <ctime>
@@ -21,6 +22,13 @@ HttpResponse process( const HttpRequest & request, const ServerConfig & config )
 		response.setKeepAlive( false );
 
 	finalizeResponse( response );
+
+	std::ostringstream ss;
+	ss << response.getStatusCode();
+
+	if (request.getState() == HttpRequest::REQUEST_COMPLETE)
+    	Logger::info( "Request Processor",
+					request.getMethod() + " " + request.getPath() + " -> " + ss.str() );
 
 	return response;
 }
@@ -95,8 +103,12 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 	if  ( !loc )
 		return handleError( config, STATUS_NOT_FOUND );
 
-	if ( loc->hasRedirect() )
-		return handleRedirect( *loc );
+	if (loc->hasRedirect()) {
+		Logger::info("Request Processor",
+					"Redirect " + request.getPath() + " -> " + loc->getRedirect().second);
+					
+		return handleRedirect(*loc);
+	}
 
 	if ( !loc->isMethodAllowed( request.getMethod() ) ) {
 		HttpResponse response = handleError( config, STATUS_METHOD_NOT_ALLOWED );
@@ -134,6 +146,8 @@ static void finalizeResponse( HttpResponse & response ) {
 	if ( utc && std::strftime( date, sizeof( date ), "%a, %d %b %Y %H:%M:%S GMT", utc ) > 0 )
 		response.setHeader( "Date", date );
 
-	if ( !response.getKeepAlive() )
+	if ( !response.getKeepAlive() ) {
+		Logger::info("Request Processor", "Connection will be closed");
 		response.setHeader( "Connection", "close" );
+	}
 }

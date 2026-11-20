@@ -2,8 +2,6 @@
 
 #include <algorithm>
 #include <cctype>
-#include <cerrno>
-#include <cstdlib>
 #include <limits>
 
 static const std::string TCHAR_SYMBOLS = "!#$%&'*+-.^_`|~";
@@ -14,6 +12,15 @@ static int safeToLower( int c ) {
 
 std::string toLower( std::string s ) {
 	std::transform( s.begin(), s.end(), s.begin(), safeToLower );
+	return s;
+}
+
+static int safeToUpper( int c ) {
+    return std::toupper( static_cast<unsigned char>(c) );
+}
+
+std::string toUpper( std::string s ) {
+	std::transform( s.begin(), s.end(), s.begin(), safeToUpper );
 	return s;
 }
 
@@ -128,4 +135,10 @@ int charToInt( char c ) {
 	if (c >= 'a' && c <= 'f')
 		return c - 'a' + 10;
 	return c - '0';
+}
+
+char intToHex( int value ) {
+	if ( value < 10 ) return value + '0';
+	
+	return value + 'A' - 10;
 }
