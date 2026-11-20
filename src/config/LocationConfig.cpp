@@ -5,10 +5,11 @@ LocationConfig::LocationConfig()
       _allowedMethods(),
       _root(""),
       _autoindex(false),
-      _index(""),
+    _index("index.html"),
       _cgiExtension(""),
       _uploadPath(""),
       _redirect(0, "") {
+    _allowedMethods.push_back("GET");
 }
 
 LocationConfig::LocationConfig(const LocationConfig& other)
