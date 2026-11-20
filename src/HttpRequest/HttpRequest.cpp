@@ -73,3 +73,7 @@ void HttpRequest::clear( ) {
 	this->_body.clear( );
 	this->_headers.clear( );
 }
+
+void HttpRequest::setMaxBodySize( size_t maxBodySize ) {
+	this->_maxBodySize = maxBodySize;
+}

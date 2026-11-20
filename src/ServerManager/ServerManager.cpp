@@ -1,5 +1,6 @@
 #include "ServerManager/ServerManager.hpp"
 #include "RequestProcessor/RequestProcessor.hpp"
+#include "Utils/Utils.hpp"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -15,6 +16,18 @@
 #include <sys/poll.h>
 #include <errno.h>
 #include <algorithm>
+
+static HttpResponse buildConnectionResponse(Connection* conn) {
+	HttpRequest& request = conn->getRequest();
+	HttpResponse response = process(request, conn->getServerConfig());
+	bool keepAlive = request.getState() != HttpRequest::REQUEST_ERROR
+		&& request.getKeepAlive()
+		&& response.getStatusCode() < 500;
+
+	response.setKeepAlive(keepAlive);
+	response.setHeader("Connection", keepAlive ? "keep-alive" : "close");
+	return response;
+}
 
 ServerManager::ServerManager(const std::vector<ServerConfig>& configs)
 	: _serverConfigs(configs) {
@@ -253,12 +266,12 @@ void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
 			return;
 		}
 
-		buffer[bytesRead] = '\0';
-		accumulatedData += buffer;
+		accumulatedData.append(buffer, static_cast<size_t>(bytesRead));
 	}
 	Connection* conn = _connections[connectionFd];
 	if (!conn) return;
 	conn->getReadBuffer().append(accumulatedData);
+	_prepareRequest(conn);
 	conn->getRequest().feed(conn->getReadBuffer());
 
 	HttpRequest::ParsingState state = conn->getRequest().getState();
@@ -274,12 +287,8 @@ void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
 			hostHeader = hostHeader.substr(0, colonPos);
 		}
 
-		conn->setHttpResponse(process(conn->getRequest(), conn->getServerConfig()));
+		conn->setHttpResponse(buildConnectionResponse(conn));
 		_pollFds[pollIndex].events = POLLOUT;
-	} else if (state == HttpRequest::REQUEST_ERROR) {
-		std::cerr << "[_handleConnectionRead] Erro de parsing HTTP " << conn->getRequest().getErrorCode() << std::endl;
-		_closeConnection(connectionFd, pollIndex);
-
 	} else {
 		std::cout << "[_handleConnectionRead] Requisição parcial, aguardando mais dados..." << std::endl;
 	}
@@ -290,24 +299,41 @@ void ServerManager::_handleConnectionWrite(int connectionFd, size_t pollIndex) {
     Connection* conn = _connections[connectionFd];
     if (!conn) return;
 
-    const std::string& responseData = conn->getRawResponse();
-    size_t totalToSend = responseData.size();
-    size_t alreadySent = conn->getBytesSent(); 
-    ssize_t bytesSent = send(connectionFd, responseData.c_str() + alreadySent, totalToSend - alreadySent, 0);
+	const std::string responseData = conn->getRawResponse();
+	size_t totalToSend = responseData.size();
+	size_t alreadySent = conn->getBytesSent();
+	ssize_t bytesSent = send(connectionFd, responseData.c_str() + alreadySent, totalToSend - alreadySent, 0);
 
-    if (bytesSent < 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            return;
-        }
-        _closeConnection(connectionFd, pollIndex);
-        return;
-    }
-    conn->addBytesSent(bytesSent);
-    if (conn->getBytesSent() >= totalToSend) {
-        std::cout << "[ServerManager] Resposta 100% enviada para o FD " << connectionFd << std::endl;
-        _closeConnection(connectionFd, pollIndex);
+	if (bytesSent < 0) {
+		if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			return;
+		}
+		_closeConnection(connectionFd, pollIndex);
+		return;
+	}
+	if (bytesSent == 0) {
+		return;
+	}
+	conn->addBytesSent(static_cast<size_t>(bytesSent));
+	if (conn->getBytesSent() >= totalToSend) {
+		std::cout << "[ServerManager] Resposta 100% enviada para o FD " << connectionFd << std::endl;
+		if (!conn->getHttpResponse().getKeepAlive()) {
+			_closeConnection(connectionFd, pollIndex);
+			return;
+		}
+
+		conn->resetForNextRequest();
+		_prepareRequest(conn);
+		conn->getRequest().feed(conn->getReadBuffer());
+		HttpRequest::ParsingState state = conn->getRequest().getState();
+		if (state == HttpRequest::REQUEST_COMPLETE || state == HttpRequest::REQUEST_ERROR) {
+			conn->setHttpResponse(buildConnectionResponse(conn));
+			_pollFds[pollIndex].events = POLLOUT;
+		} else {
+			_pollFds[pollIndex].events = POLLIN;
+		}
     } else {
-        _pollFds[pollIndex].events = POLLOUT;
+		_pollFds[pollIndex].events = POLLOUT;
     }
 }
 
@@ -344,4 +370,60 @@ const ServerConfig* ServerManager::_getConfigForListenSocket(int listenFd) const
 		return &_serverConfigs[0];
 	}
 	return NULL;
+}
+
+const ServerConfig* ServerManager::_getConfigForRequest(
+	const ServerConfig& defaultConfig,
+	const std::string& hostHeader) const {
+	std::string host = toLower(trim(hostHeader));
+	size_t colon = host.find(':');
+	if (colon != std::string::npos)
+		host = host.substr(0, colon);
+
+	for (size_t i = 0; i < _serverConfigs.size(); ++i) {
+		const ServerConfig& config = _serverConfigs[i];
+		if (config.getHost() != defaultConfig.getHost()
+			|| config.getPort() != defaultConfig.getPort())
+			continue;
+
+		const std::vector<std::string>& names = config.getServerNames();
+		for (size_t j = 0; j < names.size(); ++j) {
+			if (toLower(names[j]) == host)
+				return &config;
+		}
+	}
+
+	return &defaultConfig;
+}
+
+void ServerManager::_prepareRequest(Connection* connection) const {
+	HttpRequest& request = connection->getRequest();
+	if (request.getState() != HttpRequest::PARSING_REQUEST_LINE
+		&& request.getState() != HttpRequest::PARSING_HEADERS)
+		return;
+
+	const std::string& buffer = connection->getReadBuffer();
+	size_t headerEnd = buffer.find("\r\n\r\n");
+	if (headerEnd == std::string::npos)
+		return;
+
+	std::string hostHeader;
+	std::istringstream headers(buffer.substr(0, headerEnd));
+	std::string line;
+	while (std::getline(headers, line)) {
+		if (!line.empty() && line[line.size() - 1] == '\r')
+			line.erase(line.size() - 1);
+		size_t colon = line.find(':');
+		if (colon == std::string::npos)
+			continue;
+		if (toLower(trim(line.substr(0, colon))) == "host") {
+			hostHeader = trim(line.substr(colon + 1));
+			break;
+		}
+	}
+
+	const ServerConfig* config = _getConfigForRequest(
+		connection->getDefaultServerConfig(), hostHeader);
+	connection->setServerConfig(config);
+	request.setMaxBodySize(config->getClientMaxBodySize());
 }
