@@ -5,5 +5,6 @@
 #include "HttpResponse/HttpResponse.hpp"
 
 HttpResponse handleRedirect( const LocationConfig & );
+HttpResponse makeRedirect( int, const std::string & );
 
 #endif

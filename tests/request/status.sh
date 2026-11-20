@@ -2,8 +2,8 @@
 # Testa status codes: o código certo, a reason phrase na status line
 # e a consistência de Content-Length nas respostas de erro.
 #
-# Uso: ./test_status.sh   (HOST=... PORT=... opcionais)
-#      BIG_MB=5 ./test_status.sh   # tamanho do body para o teste de 413 (limite da conf: 1M)
+# Uso: ./tests/request/status.sh  (HOST=... PORT=... opcionais)
+#      BIG_MB=5 ./status.sh   # tamanho do body para o teste de 413 (limite da conf: 1M)
 
 HOST="${HOST:-localhost}"; PORT="${PORT:-8080}"; BASE="http://$HOST:$PORT"
 BIG_MB="${BIG_MB:-5}"
