@@ -17,6 +17,15 @@ static void finalizeResponse( HttpResponse & response );
 
 HttpResponse process( const HttpRequest & request, const ServerConfig & config ) { 
 	HttpResponse response = route( request, config );
+	
+	if ( request.getMethod() == "HEAD" && response.getStatusCode() < STATUS_BAD_REQUEST ) {
+		if ( !response.hasHeader( "Content-Length" ) ) {
+			std::ostringstream lenSs;
+			lenSs << response.getBody().size();
+			response.setHeader( "Content-Length", lenSs.str() );
+		}
+		response.setBody( "" );
+	}
 
 	if ( !request.getKeepAlive() )
 		response.setKeepAlive( false );
@@ -65,6 +74,9 @@ static const LocationConfig * resolveLocation( const std::string & requestPath, 
 static Methods methodFromString( const std::string & method ) {
 	if ( method == "GET" )
 		return METHOD_GET;
+
+	if ( method == "HEAD" )
+		return METHOD_HEAD;
 
 	if ( method == "DELETE" )
 		return METHOD_DELETE;
@@ -117,7 +129,10 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 		return handleRedirect(*loc);
 	}
 
-	if ( !loc->isMethodAllowed( request.getMethod() ) ) {
+	bool methodAllowed = loc->isMethodAllowed( request.getMethod() )
+						 || ( request.getMethod() == "HEAD" && loc->isMethodAllowed( "GET" ) );
+
+	if ( !methodAllowed ) {
 		HttpResponse response = handleError( config, STATUS_METHOD_NOT_ALLOWED );
 		response.setHeader( "Allow", loc->getAllowedMethodsString() );
 		return response;
@@ -127,7 +142,8 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 		return handleCgi( request, config, *loc );
 
 	switch ( methodFromString( request.getMethod() ) ) {
-		case METHOD_GET: 
+		case METHOD_GET:
+		case METHOD_HEAD:
 			return handleGet( request, config, *loc );
 		case METHOD_DELETE:
 			return handleDelete( request, config, *loc );

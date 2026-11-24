@@ -43,6 +43,8 @@ OBJ			:= $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 
 DEPS 		:= $(OBJ:.o=.d)
 
+TESTER_CONF = config/tester.conf
+
 $(NAME): $(OBJ)
 	@echo "$(YELLOW)🔧 Linking objects...$(RESET)"
 	@$(CPP) $(CPPFLAGS) $(OBJ) -o $(NAME)
@@ -112,9 +114,15 @@ all_tests: $(NAME)
 	./tests/integration/stress_test.sh
 	@echo "$(GREEN)✅ All tests passed successfully$(RESET)"
 
-subtest: $(NAME)
-	./build/webserv &
-	@echo "$(BLUE)🧪 Running subject tester...$(RESET)"
+stop-port:
+	@fuser -k 8080/tcp 2>/dev/null || true
+
+subtest: $(NAME) stop-port
+	@./$(NAME) $(TESTER_CONF) > /tmp/webserv_subtest.log 2>&1 & \
+	SERVER_PID=$$!; \
+	trap "kill $$SERVER_PID 2>/dev/null || true; wait $$SERVER_PID 2>/dev/null || true" EXIT INT TERM; \
+	sleep 0.5; \
+	echo "🧪 Running subject tester with $(TESTER_CONF)..."; \
 	./tests/tester http://localhost:8080
 
 .PHONY: all clean fclean re test
