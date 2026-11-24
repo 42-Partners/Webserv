@@ -111,7 +111,7 @@ server {
     }
 
     location /dir_listing {
-        root ./www;
+        root ./www/dir_listing;
         autoindex on;
         allow_methods GET;
     }

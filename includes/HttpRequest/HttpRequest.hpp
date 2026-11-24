@@ -43,6 +43,7 @@ class HttpRequest {
 		std::string getHeader( const std::string & ) const;
 
 		bool hasHeader( const std::string & ) const;
+		void setMaxBodySize( size_t );
 
 		void clear();
 		

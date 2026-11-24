@@ -23,20 +23,20 @@ SRC			:=	src/main.cpp \
 				src/config/LocationConfig.cpp \
 				src/config/ServerConfig.cpp \
 				src/config/Parser.cpp \
+				src/ServerManager/ServerManager.cpp \
 				src/Connection/Connection.cpp \
 				src/Handlers/AutoIndexHandler.cpp \
-				src/Handlers/CgiHandler.cpp  \
 				src/Handlers/ErrorHandler.cpp  \
 				src/Handlers/RedirectHandler.cpp \
 				src/Handlers/StaticFileHandler.cpp  \
 				src/Handlers/UploadHandler.cpp  \
+				src/Handlers/CgiHandler.cpp \
 				src/HttpRequest/HttpRequest.cpp  \
 				src/HttpRequest/RequestParser.cpp  \
 				src/HttpRequest/RequestProcessor.cpp  \
 				src/HttpResponse/ErrorPage.cpp  \
 				src/HttpResponse/HttpResponse.cpp  \
 				src/Logger/Logger.cpp  \
-				src/ServerManager/ServerManager.cpp \
 				src/Utils/Utils.cpp
 
 OBJ			:= $(SRC:%.cpp=$(OBJ_DIR)/%.o)

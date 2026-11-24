@@ -15,9 +15,84 @@
 #include <sys/poll.h>
 #include <errno.h>
 #include <algorithm>
+#include <signal.h>
+#include "Utils/Utils.hpp"
+
+static void prepareRequest(Connection* conn, const std::vector<ServerConfig>& configs) {
+	const ServerConfig& activeConfig = conn->getServerConfig();
+	const ServerConfig* defaultConfig = &activeConfig;
+	for (size_t i = 0; i < configs.size(); ++i) {
+		if (configs[i].getHost() == activeConfig.getHost()
+			&& configs[i].getPort() == activeConfig.getPort()) {
+			defaultConfig = &configs[i];
+			break;
+		}
+	}
+
+	const ServerConfig* selectedConfig = defaultConfig;
+	const std::string& buffer = conn->getReadBuffer();
+	size_t lineEnd = buffer.find("\r\n");
+	if (lineEnd != std::string::npos) {
+		size_t headersEnd = buffer.find("\r\n\r\n", lineEnd);
+		size_t limit = headersEnd == std::string::npos ? buffer.size() : headersEnd;
+		size_t lineStart = lineEnd + 2;
+		while (lineStart < limit) {
+			lineEnd = buffer.find("\r\n", lineStart);
+			if (lineEnd == std::string::npos || lineEnd > limit)
+				break;
+
+			std::string line = buffer.substr(lineStart, lineEnd - lineStart);
+			size_t colon = line.find(':');
+			if (colon != std::string::npos
+				&& toLower(trim(line.substr(0, colon))) == "host") {
+				std::string host = toLower(trim(line.substr(colon + 1)));
+				if (!host.empty() && host[0] != '[') {
+					size_t portSeparator = host.find(':');
+					if (portSeparator != std::string::npos)
+						host.erase(portSeparator);
+				}
+
+				for (size_t i = 0; i < configs.size(); ++i) {
+					if (configs[i].getHost() != defaultConfig->getHost()
+						|| configs[i].getPort() != defaultConfig->getPort())
+						continue;
+
+					const std::vector<std::string>& names = configs[i].getServerNames();
+					for (size_t j = 0; j < names.size(); ++j) {
+						if (toLower(names[j]) == host) {
+							selectedConfig = &configs[i];
+							break;
+						}
+					}
+					if (selectedConfig != defaultConfig)
+						break;
+				}
+				break;
+			}
+			lineStart = lineEnd + 2;
+		}
+	}
+
+	conn->setServerConfig(selectedConfig);
+	conn->getRequest().setMaxBodySize(selectedConfig->getClientMaxBodySize());
+}
+
+static void queueResponse(Connection* conn, bool peerClosed) {
+	HttpRequest& request = conn->getRequest();
+	HttpResponse response = process(request, conn->getServerConfig());
+	bool keepAlive = !peerClosed
+		&& request.getState() == HttpRequest::REQUEST_COMPLETE
+		&& request.getKeepAlive()
+		&& response.getStatusCode() < 500;
+
+	response.setKeepAlive(keepAlive);
+	response.setHeader("Connection", keepAlive ? "keep-alive" : "close");
+	conn->setHttpResponse(response);
+}
 
 ServerManager::ServerManager(const std::vector<ServerConfig>& configs)
 	: _serverConfigs(configs) {
+	signal(SIGPIPE, SIG_IGN);
 }
 
 ServerManager::~ServerManager() {
@@ -131,32 +206,48 @@ void ServerManager::run() {
 			if (pollCount == 0) {
 				continue;
 			}
-			for (size_t i = 0; i < _pollFds.size(); ++i) {
+			for (size_t i = 0; i < _pollFds.size();) {
 				int fd = _pollFds[i].fd;
 				short revents = _pollFds[i].revents;
 
-				if (revents == 0) continue;
+				if (revents == 0) {
+					++i;
+					continue;
+				}
 
 				if (_isListeningSocket(fd)) {
 					if (revents & POLLIN) {
 						_acceptNewConnection(fd);
 					}
+					++i;
 				} else {
-					if (revents & (POLLHUP | POLLERR)) {
-						std::cout << "entrou aqui POLLHUP/POLLERR" << std::endl;
+					if (revents & POLLERR) {
 						_closeConnection(fd, i);
-						--i;
 						continue;
 					}
-					if (revents & POLLIN) {
-						std::cout << "entrou aqui POLLIN" << std::endl;
+
+					std::map<int, Connection*>::iterator connection = _connections.find(fd);
+					if (connection == _connections.end()) {
+						_pollFds.erase(_pollFds.begin() + i);
+						continue;
+					}
+
+					if (revents & (POLLIN | POLLHUP)) {
 						_handleConnectionRead(fd, i);
 					} 
-					// Trata escrita
-					if (revents & POLLOUT) {
-						std::cout << "entrou aqui POLLOUT" << std::endl;
+
+					connection = _connections.find(fd);
+					if (connection == _connections.end())
+						continue;
+
+					bool responsePending =
+						connection->second->getState() == KEEP_ALIVE_WAIT
+						|| connection->second->getState() == READY_TO_CLOSE;
+					if (responsePending && ((revents & POLLOUT) || (revents & POLLHUP))) {
 						_handleConnectionWrite(fd, i);
 					}
+					if (_connections.find(fd) != _connections.end())
+						++i;
 				}
 			}
 		}
@@ -234,54 +325,56 @@ size_t ServerManager::_findPollIndex(int fd) const {
 
 void ServerManager::_handleConnectionRead(int connectionFd, size_t pollIndex) {
 	char buffer[4096];
-	std::string accumulatedData = "";
+	std::string accumulatedData;
+	bool peerClosed = false;
 
 	while (true) {
-		ssize_t bytesRead = recv(connectionFd, buffer, sizeof(buffer) - 1, 0);
+		ssize_t bytesRead = recv(connectionFd, buffer, sizeof(buffer), 0);
 
 		if (bytesRead < 0) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
 				break;
 			}
+			if (errno == EINTR)
+				continue;
 			_closeConnection(connectionFd, pollIndex);
 			return;
 		} 
 		
 		if (bytesRead == 0) {
-			std::cout << "[_handleConnectionRead] Cliente fechou a conexão (FD: " << connectionFd << ")" << std::endl;
-			_closeConnection(connectionFd, pollIndex);
-			return;
+			peerClosed = true;
+			break;
 		}
 
-		buffer[bytesRead] = '\0';
-		accumulatedData += buffer;
+		accumulatedData.append(buffer, static_cast<size_t>(bytesRead));
+		std::map<int, Connection*>::iterator active = _connections.find(connectionFd);
+		if (active == _connections.end())
+			return;
+		active->second->updateLastActivity();
 	}
-	Connection* conn = _connections[connectionFd];
-	if (!conn) return;
+	std::map<int, Connection*>::iterator it = _connections.find(connectionFd);
+	if (it == _connections.end())
+		return;
+	Connection* conn = it->second;
+
+	if (conn->getState() == KEEP_ALIVE_WAIT
+		|| conn->getState() == READY_TO_CLOSE) {
+		conn->getReadBuffer().append(accumulatedData);
+		if (peerClosed && conn->getState() == KEEP_ALIVE_WAIT)
+			conn->setState(READY_TO_CLOSE);
+		return;
+	}
+
 	conn->getReadBuffer().append(accumulatedData);
+	prepareRequest(conn, _serverConfigs);
 	conn->getRequest().feed(conn->getReadBuffer());
 
 	HttpRequest::ParsingState state = conn->getRequest().getState();
-	std::cout << "[_handleConnectionRead] Requisição HTTP state: " << state << std::endl;
-	
 	if (state == HttpRequest::REQUEST_COMPLETE || state == HttpRequest::REQUEST_ERROR) {
-		std::cout << "[ServerManager] Requisição HTTP 100% completa no FD " << connectionFd << std::endl;
-
-		std::string hostHeader = conn->getRequest().getHeader("Host");
-
-		size_t colonPos = hostHeader.find(':');
-		if (colonPos != std::string::npos) {
-			hostHeader = hostHeader.substr(0, colonPos);
-		}
-
-		conn->setHttpResponse(process(conn->getRequest(), conn->getServerConfig()));
+		queueResponse(conn, peerClosed);
 		_pollFds[pollIndex].events = POLLOUT;
-	} else if (state == HttpRequest::REQUEST_ERROR) {
-		std::cerr << "[_handleConnectionRead] Erro de parsing HTTP " << conn->getRequest().getErrorCode() << std::endl;
+	} else if (peerClosed) {
 		_closeConnection(connectionFd, pollIndex);
-
-	} else {
-		std::cout << "[_handleConnectionRead] Requisição parcial, aguardando mais dados..." << std::endl;
 	}
 }
 
@@ -290,7 +383,7 @@ void ServerManager::_handleConnectionWrite(int connectionFd, size_t pollIndex) {
     Connection* conn = _connections[connectionFd];
     if (!conn) return;
 
-    const std::string& responseData = conn->getRawResponse();
+    const std::string responseData = conn->getRawResponse();
     size_t totalToSend = responseData.size();
     size_t alreadySent = conn->getBytesSent(); 
     ssize_t bytesSent = send(connectionFd, responseData.c_str() + alreadySent, totalToSend - alreadySent, 0);
@@ -302,12 +395,28 @@ void ServerManager::_handleConnectionWrite(int connectionFd, size_t pollIndex) {
         _closeConnection(connectionFd, pollIndex);
         return;
     }
-    conn->addBytesSent(bytesSent);
+	if (bytesSent == 0) {
+		_closeConnection(connectionFd, pollIndex);
+		return;
+	}
+    conn->addBytesSent(static_cast<size_t>(bytesSent));
+	conn->updateLastActivity();
     if (conn->getBytesSent() >= totalToSend) {
-        std::cout << "[ServerManager] Resposta 100% enviada para o FD " << connectionFd << std::endl;
-        _closeConnection(connectionFd, pollIndex);
-    } else {
-        _pollFds[pollIndex].events = POLLOUT;
+		if (conn->getState() == READY_TO_CLOSE) {
+			_closeConnection(connectionFd, pollIndex);
+			return;
+		}
+
+		conn->resetForNextRequest();
+		prepareRequest(conn, _serverConfigs);
+		conn->getRequest().feed(conn->getReadBuffer());
+		HttpRequest::ParsingState state = conn->getRequest().getState();
+		if (state == HttpRequest::REQUEST_COMPLETE || state == HttpRequest::REQUEST_ERROR) {
+			queueResponse(conn, false);
+			_pollFds[pollIndex].events = POLLOUT;
+		} else {
+			_pollFds[pollIndex].events = POLLIN;
+		}
     }
 }
 

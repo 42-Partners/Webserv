@@ -19,7 +19,7 @@ Connection::Connection(int ConnectionFd, const std::string& ConnectionIp, const 
 	_ip(ConnectionIp),
 	_readBuffer(),
 	_writeBuffer(),
-	_httpRequest(new HttpRequest()),
+	_httpRequest(new HttpRequest(config ? config->getClientMaxBodySize() : 1048576)),
 	_lastActivity(time(NULL)),
 	_connectionState(READING_HEADER),
 	_httpResponse(),
@@ -106,9 +106,9 @@ void Connection::resetForNextRequest() {
 	if (this->_httpRequest != NULL) {
 		this->_httpRequest->clear();
 	}
-	this->_readBuffer.clear();
 	this->_writeBuffer.clear();
-	// this->_httpResponse.clear();
+	this->_httpResponse = HttpResponse();
+	this->_bytesSent = 0;
 	this->_connectionState = READING_HEADER;
 	this->updateLastActivity();
 }
@@ -134,6 +134,10 @@ const ServerConfig& Connection::getServerConfig() const
 
 std::string Connection::getRawResponse()
 {
+	if (_bytesSent == 0 && _connectionState == READY_TO_CLOSE) {
+		_httpResponse.setKeepAlive(false);
+		_httpResponse.setHeader("Connection", "close");
+	}
 	return this->_httpResponse.serialize();
 }
 
@@ -149,7 +153,13 @@ void Connection::resetBytesSent() {
 	_bytesSent = 0;
 }
 
+void Connection::setServerConfig(const ServerConfig* config) {
+	this->_serverConfig = config;
+}
+
 void	Connection::setHttpResponse(HttpResponse response)
 {
 	this->_httpResponse = response;
+	this->_connectionState = response.getKeepAlive()
+		? KEEP_ALIVE_WAIT : READY_TO_CLOSE;
 }
