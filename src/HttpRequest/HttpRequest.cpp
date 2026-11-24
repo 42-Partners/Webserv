@@ -57,6 +57,10 @@ bool HttpRequest::hasHeader( const std::string & key ) const {
 	return false;
 }
 
+void HttpRequest::setMaxBodySize( size_t maxBodySize ) {
+	this->_maxBodySize = maxBodySize;
+}
+
 void HttpRequest::clear( ) {
 	this->_errorCode = 0;
 	this->_state = PARSING_REQUEST_LINE;
@@ -64,7 +68,6 @@ void HttpRequest::clear( ) {
 	this->_isChunked = false;
 	this->_hasContentLength = false;
 	this->_contentLength = 0;
-	this->_maxBodySize = DEFAULT_MAX_BODY; // e se vier do construtor?
 	this->_method.clear( );
 	this->_uri.clear( );
 	this->_path.clear( );

@@ -52,6 +52,7 @@ mkdir -p ./www/virtual ./uploads
 [ ! -f ./www/index.html ] && echo "<h1>Index Principal</h1>" > ./www/index.html
 [ ! -f ./www/404.html ] && echo "<h1>Custom 404 Page</h1>" > ./www/404.html
 [ ! -f ./www/virtual/index.html ] && echo "<h1>Virtual Host Index</h1>" > ./www/virtual/index.html
+VHOST_INDEX_CONTENT=$(cat ./www/virtual/index.html)
 
 # Arquivos temporários para payload de upload e limite de tamanho
 echo "Conteudo de teste para upload multipart" > /tmp/test_upload.txt
@@ -148,7 +149,7 @@ else
 fi
 
 # Teste 10: Virtual Host na porta 8080 (Host: virtual.local -> root ./www/virtual)
-run_test 10 "200" "Virtual Host Index" -H "Host: virtual.local" "http://127.0.0.1:8080/"
+run_test 10 "200" "$VHOST_INDEX_CONTENT" -H "Host: virtual.local" "http://127.0.0.1:8080/"
 
 # Teste 11: Método não configurado no Virtual Host (POST onde allow_methods não foi definido)
 # Nota: Dependendo da regra padrão do seu servidor quando allow_methods é omitido, ajuste se necessário (405 se restrito)
