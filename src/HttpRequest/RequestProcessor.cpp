@@ -75,18 +75,25 @@ static Methods methodFromString( const std::string & method ) {
 	return METHOD_UNKNOWN;
 }
 
-bool isCgiRequest(const std::string& path) {
-	size_t lastSlash = path.find_last_of('/');
-	std::string filename = (lastSlash != std::string::npos) 
-						   ? path.substr(lastSlash + 1) 
-						   : path;
+static bool isCgiRequest(const std::string& uriPath, const LocationConfig& location) {
+	std::string cleanPath = uriPath;
+	size_t queryPos = cleanPath.find('?');
+	if (queryPos != std::string::npos) {
+		cleanPath = cleanPath.substr(0, queryPos);
+	}
 
-	size_t dot = filename.find_last_of('.');
-	if (dot != std::string::npos) {
-		std::string ext = filename.substr(dot);
-		if (ext == ".php" || ext == ".py" || ext == ".sh") { //config da location ou hardcoded?
+	const std::string& cgiExt = location.getCgiExtension();
+	if (cgiExt.empty()) {
+		return false;
+	}
+
+	size_t pos = cleanPath.find(cgiExt);
+	while (pos != std::string::npos) {
+		size_t endPos = pos + cgiExt.size();
+		if (endPos == cleanPath.size() || cleanPath[endPos] == '/') {
 			return true;
 		}
+		pos = cleanPath.find(cgiExt, pos + 1);
 	}
 
 	return false;
@@ -116,7 +123,7 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 		return response;
 	}
 
-	if ( isCgiRequest(request.getPath()) )
+	if ( isCgiRequest(request.getPath(), *loc) )
 		return handleCgi( request, config, *loc );
 
 	switch ( methodFromString( request.getMethod() ) ) {
