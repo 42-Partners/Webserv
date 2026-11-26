@@ -23,6 +23,12 @@ void HttpRequest::feed( std::string & buffer ) {
 			advanced = parseRequestLine( buffer );
 		else if ( _state == PARSING_HEADERS )
 			advanced = parseHeaders(buffer);
+		else if ( _state == HEADERS_PARSED ) {
+			_state = FINISHING_HEADERS;
+			return;
+		}
+		else if ( _state == FINISHING_HEADERS )
+			advanced = finishHeaders( );
 		else if ( _state == PARSING_BODY )
 			advanced = parseBody( buffer );
 		else if ( _state == CHUNK_TRAILERS )
@@ -209,7 +215,8 @@ bool HttpRequest::parseHeaders( std::string & buffer ) {
 
 	buffer.erase(0, pos + HEADERS_END.size());
 
-	return finishHeaders();
+	_state = HEADERS_PARSED;
+	return true;
 }
 
 bool HttpRequest::parseHeaderLine( const std::string & line ) {
