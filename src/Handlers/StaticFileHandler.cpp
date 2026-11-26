@@ -14,27 +14,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-static std::string resolveFilePath( const LocationConfig & loc, const std::string & requestPath ) {
-	const std::string leftover = requestPath.substr( loc.getPath().size() );
-	const std::string & root = loc.getRoot();
-
-	if ( leftover.empty() )
-		return root;
-
-	bool rootEndsWithSlash = root[root.size() - 1] == '/';
-	bool leftoverStartsWithSlash = leftover[0] == '/';
-
-	std::string filePath;
-	if ( !rootEndsWithSlash && !leftoverStartsWithSlash )
-		filePath = root + "/" + leftover;
-	else if ( rootEndsWithSlash && leftoverStartsWithSlash )
-		filePath = root + leftover.substr( 1 );
-	else 
-		filePath = root + leftover;
-
-	return filePath;
-}
-
 static std::string getMimeType(const std::string& path) {
     size_t slashPos = path.find_last_of('/');
     size_t dotPos = path.find_last_of(".");
@@ -81,7 +60,9 @@ static HttpResponse serveFile(const ServerConfig & config, const std::string & f
 
 HttpResponse handleGet(const HttpRequest & request, const ServerConfig & config, const LocationConfig & loc) {
     std::string requestPath = request.getPath();
-    std::string filePath = resolveFilePath(loc, requestPath);
+    std::string filePath = loc.resolveFilePath(requestPath);
+    if (filePath.empty())
+        return handleError(config, STATUS_INTERNAL_SERVER_ERROR);
 
     struct stat fileInfo;
     if (stat(filePath.c_str(), &fileInfo) != 0)
@@ -124,7 +105,9 @@ HttpResponse handleGet(const HttpRequest & request, const ServerConfig & config,
 
 HttpResponse handleDelete(const HttpRequest & request, const ServerConfig & config, const LocationConfig & loc) {
     std::string requestPath = request.getPath();
-    std::string filePath = resolveFilePath(loc, requestPath);
+    std::string filePath = loc.resolveFilePath(requestPath);
+    if (filePath.empty())
+        return handleError(config, STATUS_INTERNAL_SERVER_ERROR);
 
     struct stat fileInfo;
     if (stat(filePath.c_str(), &fileInfo) != 0)

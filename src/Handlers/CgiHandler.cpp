@@ -1,3 +1,4 @@
+#include "config/LocationConfig.hpp"
 #include "Handlers/CgiHandler.hpp"
 #include "Handlers/ErrorHandler.hpp"
 #include "Logger/Logger.hpp"
@@ -42,25 +43,24 @@ bool isCgiRequest(const std::string& uriPath, const LocationConfig& location) {
 }
 
 HttpResponse handleCgi(const HttpRequest & request, const ServerConfig & config, const LocationConfig & loc) {
-    std::string scriptPath = loc.getRoot() + request.getPath();
+    std::string scriptPath = loc.resolveFilePath(request.getPath());
+    if (scriptPath.empty())
+        return handleError(config, STATUS_INTERNAL_SERVER_ERROR);
 
-		struct stat buffer;
-		if (stat(scriptPath.c_str(), &buffer) != 0 || !S_ISREG(buffer.st_mode))
-			return handleError(config, STATUS_NOT_FOUND);
-        if (access(scriptPath.c_str(), X_OK) != 0)
-            return handleError(config, STATUS_FORBIDDEN);
-
-        Logger::info("CGI Handler", "Executing CGI script: " + scriptPath);
-
-		HttpResponse res = executeCgi( 
-			request,
-			scriptPath,
-			config.getPort(),
-			config.getServerNames().empty() ? "localhost" : config.getServerNames()[0]);
-
-		if (res.getStatusCode() >= 400)
-			return handleError(config, res.getStatusCode());
-		return res;
+	struct stat buffer;
+	if (stat(scriptPath.c_str(), &buffer) != 0 || !S_ISREG(buffer.st_mode))
+		return handleError(config, STATUS_NOT_FOUND);
+    if (access(scriptPath.c_str(), X_OK) != 0)
+        return handleError(config, STATUS_FORBIDDEN);
+    Logger::info("CGI Handler", "Executing CGI script: " + scriptPath);
+	HttpResponse res = executeCgi( 
+		request,
+		scriptPath,
+		config.getPort(),
+		config.getServerNames().empty() ? "localhost" : config.getServerNames()[0]);
+	if (res.getStatusCode() >= 400)
+		return handleError(config, res.getStatusCode());
+	return res;
 }
 
 static void setNonBlocking(int fd) {

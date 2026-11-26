@@ -95,3 +95,26 @@ bool LocationConfig::isMethodAllowed(const std::string& method) const {
 bool LocationConfig::hasRedirect() const {
     return !_redirect.second.empty();
 }
+// root nao pode ser vazio
+std::string LocationConfig::resolveFilePath( const std::string & requestPath ) const {
+	if (_root.empty())
+        return "";
+    
+    const std::string leftover = requestPath.substr( _path.size() );
+
+	if ( leftover.empty() )
+		return _root;
+
+	bool rootEndsWithSlash = _root[_root.size() - 1] == '/';
+	bool leftoverStartsWithSlash = leftover[0] == '/';
+
+	std::string filePath;
+	if ( !rootEndsWithSlash && !leftoverStartsWithSlash )
+		filePath = _root + "/" + leftover;
+	else if ( rootEndsWithSlash && leftoverStartsWithSlash )
+		filePath = _root + leftover.substr( 1 );
+	else 
+		filePath = _root + leftover;
+
+	return filePath;
+}

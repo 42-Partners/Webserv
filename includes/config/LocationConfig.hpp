@@ -53,6 +53,7 @@ public:
     void addAllowedMethod(const std::string& method);
     bool isMethodAllowed(const std::string& method) const;
     bool hasRedirect() const;
+    std::string resolveFilePath( const std::string & requestPath ) const;
 };
 
 #endif
