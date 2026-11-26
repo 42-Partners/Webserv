@@ -39,6 +39,8 @@ public:
     void addServerName(const std::string& name);
     void addErrorPage(int code, const std::string& path);
     void addLocation(const LocationConfig& location);
+
+    const LocationConfig * resolveLocation( const std::string & requestPath ) const;
 };
 
 #endif

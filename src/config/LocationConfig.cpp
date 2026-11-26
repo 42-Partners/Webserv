@@ -5,11 +5,13 @@ LocationConfig::LocationConfig()
       _allowedMethods(),
       _root(""),
       _autoindex(false),
-    _index("index.html"),
+      _index("index.html"),
       _cgiExtension(""),
       _uploadPath(""),
-      _redirect(0, "") {
-    _allowedMethods.push_back("GET");
+      _redirect(0, ""),
+      _hasMaxBodySize(false),
+      _maxBodySize(0) {
+      _allowedMethods.push_back("GET");
 }
 
 LocationConfig::LocationConfig(const LocationConfig& other)
@@ -20,7 +22,9 @@ LocationConfig::LocationConfig(const LocationConfig& other)
       _index(other._index),
       _cgiExtension(other._cgiExtension),
       _uploadPath(other._uploadPath),
-      _redirect(other._redirect) {
+      _redirect(other._redirect),
+      _hasMaxBodySize(other._hasMaxBodySize),
+      _maxBodySize(other._maxBodySize) {
 }
 
 LocationConfig& LocationConfig::operator=(const LocationConfig& other) {
@@ -33,6 +37,8 @@ LocationConfig& LocationConfig::operator=(const LocationConfig& other) {
         this->_cgiExtension = other._cgiExtension;
         this->_uploadPath = other._uploadPath;
         this->_redirect = other._redirect;
+        this->_hasMaxBodySize = other._hasMaxBodySize;
+        this->_maxBodySize = other._maxBodySize;
     }
     return *this;
 }
@@ -60,6 +66,8 @@ const std::string& LocationConfig::getIndex() const { return this->_index; }
 const std::string& LocationConfig::getCgiExtension() const { return this->_cgiExtension; }
 const std::string& LocationConfig::getUploadPath() const { return this->_uploadPath; }
 const std::pair<int, std::string>& LocationConfig::getRedirect() const { return this->_redirect; }
+bool LocationConfig::hasMaxBodySize() const { return _hasMaxBodySize; }
+size_t LocationConfig::getMaxBodySize() const { return _maxBodySize; }
 
 // Setters
 void LocationConfig::setPath(const std::string& path) { this->_path = path; }
@@ -71,6 +79,7 @@ void LocationConfig::setCgiExtension(const std::string& ext) { this->_cgiExtensi
 void LocationConfig::setUploadPath(const std::string& path) { this->_uploadPath = path; }
 void LocationConfig::setRedirect(const std::pair<int, std::string>& redirect) { this->_redirect = redirect; }
 void LocationConfig::setRedirect(int code, const std::string& url) { this->_redirect = std::make_pair(code, url); }
+void LocationConfig::setMaxBodySize(size_t size) { _maxBodySize = size; _hasMaxBodySize = true; }
 
 void LocationConfig::addAllowedMethod(const std::string& method) {
     this->_allowedMethods.push_back(method);

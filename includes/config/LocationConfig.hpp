@@ -15,6 +15,8 @@ private:
     std::string                 _cgiExtension;
     std::string                 _uploadPath;
     std::pair<int, std::string> _redirect;
+    bool                        _hasMaxBodySize;
+    size_t                      _maxBodySize;
 
 public:
     LocationConfig();
@@ -32,6 +34,8 @@ public:
     const std::string& getCgiExtension() const;
     const std::string& getUploadPath() const;
     const std::pair<int, std::string>& getRedirect() const;
+    bool hasMaxBodySize() const;
+    size_t getMaxBodySize() const;
 
     // Setters
     void setPath(const std::string& path);
@@ -43,6 +47,7 @@ public:
     void setUploadPath(const std::string& path);
     void setRedirect(const std::pair<int, std::string>& redirect);
     void setRedirect(int code, const std::string& url);
+    void setMaxBodySize(size_t size);
 
     // Utilitário
     void addAllowedMethod(const std::string& method);
