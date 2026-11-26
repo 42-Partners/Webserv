@@ -17,6 +17,30 @@
 
 static HttpResponse executeCgi(const HttpRequest& req, const std::string& scriptPath, int serverPort, const std::string& serverName);
 
+bool isCgiRequest(const std::string& uriPath, const LocationConfig& location) {
+	std::string cleanPath = uriPath;
+	size_t queryPos = cleanPath.find('?');
+	if (queryPos != std::string::npos) {
+		cleanPath = cleanPath.substr(0, queryPos);
+	}
+
+	const std::string& cgiExt = location.getCgiExtension();
+	if (cgiExt.empty()) {
+		return false;
+	}
+
+	size_t pos = cleanPath.find(cgiExt);
+	while (pos != std::string::npos) {
+		size_t endPos = pos + cgiExt.size();
+		if (endPos == cleanPath.size() || cleanPath[endPos] == '/') {
+			return true;
+		}
+		pos = cleanPath.find(cgiExt, pos + 1);
+	}
+
+	return false;
+}
+
 HttpResponse handleCgi(const HttpRequest & request, const ServerConfig & config, const LocationConfig & loc) {
     std::string scriptPath = loc.getRoot() + request.getPath();
 

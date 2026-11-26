@@ -40,35 +40,6 @@ HttpResponse process( const HttpRequest & request, const ServerConfig & config )
 	return response;
 }
 
-static const LocationConfig * resolveLocation( const std::string & requestPath, const ServerConfig & config ) {
-	const LocationConfig * loc = NULL;
-
-	const std::vector<LocationConfig> & locConfig = config.getLocations();
-
-	size_t bestSize = 0;
-	for (size_t i = 0; i < locConfig.size(); i++ ) {
-		const std::string & locPath = locConfig[i].getPath();
-
-		if ( requestPath.size() < locPath.size() ) continue;
-
-		size_t size = locPath.size();
-
-		if ( requestPath.compare( 0, size, locPath ) ) continue;
-
-		bool boundaryOk = locPath[size-1] == '/'
-						|| requestPath.size() == size
-						|| requestPath[size] == '/';
-		if ( !boundaryOk ) continue;
-
-		if ( size > bestSize ) {
-			bestSize = size;
-			loc = &locConfig[i];
-		}
-	}
-
-	return loc;
-}
-
 static Methods methodFromString( const std::string & method ) {
 	if ( method == "GET" )
 		return METHOD_GET;
@@ -85,30 +56,6 @@ static Methods methodFromString( const std::string & method ) {
 	return METHOD_UNKNOWN;
 }
 
-static bool isCgiRequest(const std::string& uriPath, const LocationConfig& location) {
-	std::string cleanPath = uriPath;
-	size_t queryPos = cleanPath.find('?');
-	if (queryPos != std::string::npos) {
-		cleanPath = cleanPath.substr(0, queryPos);
-	}
-
-	const std::string& cgiExt = location.getCgiExtension();
-	if (cgiExt.empty()) {
-		return false;
-	}
-
-	size_t pos = cleanPath.find(cgiExt);
-	while (pos != std::string::npos) {
-		size_t endPos = pos + cgiExt.size();
-		if (endPos == cleanPath.size() || cleanPath[endPos] == '/') {
-			return true;
-		}
-		pos = cleanPath.find(cgiExt, pos + 1);
-	}
-
-	return false;
-}
-
 static HttpResponse route( const HttpRequest & request, const ServerConfig & config ) {
 	if ( request.getState() == HttpRequest::REQUEST_ERROR ) {
 		HttpResponse response = handleError( config, request.getErrorCode() );
@@ -116,7 +63,7 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 		return response;
 	}
 
-	const LocationConfig * loc = resolveLocation( request.getPath(), config );
+	const LocationConfig * loc = config.resolveLocation( request.getPath() );
 	if  ( !loc )
 		return handleError( config, STATUS_NOT_FOUND );
 

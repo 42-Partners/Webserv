@@ -24,6 +24,7 @@ struct CgiSession {
     bool isFinished;
 };
 
+bool isCgiRequest(const std::string& uriPath, const LocationConfig& location);
 HttpResponse handleCgi(const HttpRequest & request, const ServerConfig & config, const LocationConfig & loc);
 
 #endif
