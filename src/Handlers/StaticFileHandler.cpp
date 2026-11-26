@@ -75,9 +75,6 @@ static HttpResponse serveFile(const ServerConfig & config, const std::string & f
     response.setStatus(STATUS_OK);
     response.setBody(content);
     response.setHeader("Content-Type", getMimeType(filePath));
-    std::ostringstream len;
-	len << content.size();
-	response.setHeader( "Content-Length", len.str() );
 
     return response;
 }

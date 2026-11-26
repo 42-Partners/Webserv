@@ -18,9 +18,13 @@ static void finalizeResponse( HttpResponse & response );
 HttpResponse process( const HttpRequest & request, const ServerConfig & config ) { 
 	HttpResponse response = route( request, config );
 
-	if ( request.getMethod() == "HEAD" )
+	if ( request.getMethod() == "HEAD" ) {
+		std::ostringstream ss;
+		ss << response.getBody().size();
+		response.setHeader( "Content-Length", ss.str() );
 		response.setBody( "" );
-
+	}
+		
 	if ( !request.getKeepAlive() )
 		response.setKeepAlive( false );
 

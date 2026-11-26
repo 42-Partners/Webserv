@@ -8,6 +8,7 @@
 #include <cerrno>
 #include <cstring>
 #include <dirent.h>
+#include <sstream>
 #include <sys/stat.h>
 #include <vector>
 
