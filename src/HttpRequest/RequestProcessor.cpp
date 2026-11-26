@@ -17,15 +17,9 @@ static void finalizeResponse( HttpResponse & response );
 
 HttpResponse process( const HttpRequest & request, const ServerConfig & config ) { 
 	HttpResponse response = route( request, config );
-	
-	if ( request.getMethod() == "HEAD" && response.getStatusCode() < STATUS_BAD_REQUEST ) {
-		if ( !response.hasHeader( "Content-Length" ) ) {
-			std::ostringstream lenSs;
-			lenSs << response.getBody().size();
-			response.setHeader( "Content-Length", lenSs.str() );
-		}
+
+	if ( request.getMethod() == "HEAD" )
 		response.setBody( "" );
-	}
 
 	if ( !request.getKeepAlive() )
 		response.setKeepAlive( false );
@@ -129,10 +123,7 @@ static HttpResponse route( const HttpRequest & request, const ServerConfig & con
 		return handleRedirect(*loc);
 	}
 
-	bool methodAllowed = loc->isMethodAllowed( request.getMethod() )
-						 || ( request.getMethod() == "HEAD" && loc->isMethodAllowed( "GET" ) );
-
-	if ( !methodAllowed ) {
+	if ( !loc->isMethodAllowed( request.getMethod() ) ) {
 		HttpResponse response = handleError( config, STATUS_METHOD_NOT_ALLOWED );
 		response.setHeader( "Allow", loc->getAllowedMethodsString() );
 		return response;
