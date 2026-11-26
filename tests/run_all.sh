@@ -16,7 +16,7 @@ cd "$ROOT" || exit 2
 
 export HOST="${HOST:-localhost}"
 export PORT="${PORT:-8080}"
-SERVER_BIN="${SERVER_BIN:-build/webserv}"
+SERVER_BIN="${SERVER_BIN:-./webserv}"
 CONF="${CONF:-tests/request/test.conf}"
 TEST_DIR="tests/request"
 LOG="${TMPDIR:-/tmp}/webserv_tests_server.log"

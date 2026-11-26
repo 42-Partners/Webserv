@@ -17,7 +17,7 @@
 # Teste #11 (DELETE / com Host: virtual.local): Valida se o Virtual Host bloqueia métodos não permitidos com 405 Method Not Allowed.
 
 
-BIN="./build/webserv"
+BIN="./webserv"
 SERVER_PID=""
 PASSED=0
 FAILED=0
