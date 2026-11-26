@@ -4,7 +4,7 @@
 
 #include <sstream>
 
-HttpResponse::HttpResponse() : _statusCode(0), _keepAlive(false) { }
+HttpResponse::HttpResponse() : _statusCode(0), _keepAlive(true) { }
 
 HttpResponse::~HttpResponse() { }
 

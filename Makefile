@@ -1,4 +1,4 @@
-NAME		:= build/webserv
+NAME		:= webserv
 
 CPP			:= c++
 CPPFLAGS 	:= -Wall -Wextra -Werror -std=c++98 -MMD -MP
@@ -70,28 +70,30 @@ re: fclean all
 
 # tests
 
-TEST_REQUEST     := $(TEST_DIR)/test_request_line
+TESTER_CONF			:=	config/tester.conf
 
-TEST_REQUEST_SRC := tests/main.cpp \
-					tests/request/location.cpp \
-					tests/request/parser.cpp \
-					tests/request/route.cpp \
-					tests/request/status_code.cpp \
-					src/config/ServerConfig.cpp \
-					src/config/LocationConfig.cpp \
-					src/Handlers/ErrorHandler.cpp \
-					src/Handlers/RedirectHandler.cpp \
-					src/Handlers/StaticFileHandler.cpp \
-					src/Handlers/UploadHandler.cpp \
-					src/HttpRequest/HttpRequest.cpp \
-					src/HttpRequest/RequestParser.cpp \
-					src/HttpResponse/ErrorPage.cpp \
-					src/HttpResponse/HttpResponse.cpp \
-					src/Utils/Utils.cpp
+TEST_REQUEST		:=	$(TEST_DIR)/test_request_line
 
-TEST_HEADERS     := $(wildcard $(HPP_DIR)/*/*.hpp tests/*.hpp tests/*/*.hpp)
+TEST_REQUEST_SRC	:=	tests/main.cpp \
+						tests/request/location.cpp \
+						tests/request/parser.cpp \
+						tests/request/route.cpp \
+						tests/request/status_code.cpp \
+						src/config/ServerConfig.cpp \
+						src/config/LocationConfig.cpp \
+						src/Handlers/ErrorHandler.cpp \
+						src/Handlers/RedirectHandler.cpp \
+						src/Handlers/StaticFileHandler.cpp \
+						src/Handlers/UploadHandler.cpp \
+						src/HttpRequest/HttpRequest.cpp \
+						src/HttpRequest/RequestParser.cpp \
+						src/HttpResponse/ErrorPage.cpp \
+						src/HttpResponse/HttpResponse.cpp \
+						src/Utils/Utils.cpp
 
-TEST_CPPFLAGS    := $(CPPFLAGS) -I$(HPP_DIR) -Isrc
+TEST_HEADERS		:=	$(wildcard $(HPP_DIR)/*/*.hpp tests/*.hpp tests/*/*.hpp)
+
+TEST_CPPFLAGS		:=	$(CPPFLAGS) -I$(HPP_DIR) -Isrc
 
 $(TEST_DIR):
 	mkdir -p $(TEST_DIR)
@@ -112,9 +114,15 @@ all_tests: $(NAME)
 	./tests/integration/stress_test.sh
 	@echo "$(GREEN)✅ All tests passed successfully$(RESET)"
 
-subtest: $(NAME)
-	./build/webserv &
-	@echo "$(BLUE)🧪 Running subject tester...$(RESET)"
+stop-port:
+	@fuser -k 8080/tcp 2>/dev/null || pkill -x webserv 2>/dev/null || true
+
+subtest: $(NAME) stop-port
+	@./$(NAME) $(TESTER_CONF) > /tmp/webserv_subtest.log 2>&1 & \
+	SERVER_PID=$$!; \
+	trap "kill $$SERVER_PID 2>/dev/null || true; wait $$SERVER_PID 2>/dev/null || true" EXIT INT TERM; \
+	sleep 0.5; \
+	echo "🧪 Running subject tester with $(TESTER_CONF)..."; \
 	./tests/tester http://localhost:8080
 
-.PHONY: all clean fclean re test
+.PHONY: all clean fclean re test all_tests subtest stop-port

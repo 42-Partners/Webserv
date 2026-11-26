@@ -4,7 +4,7 @@
 # Suite Completa de Testes E2E & Stress - Webserv (42)
 # ==============================================================================
 
-BIN="./build/webserv"
+BIN="./webserv"
 CONF_FILE="/tmp/webserv_full_e2e.conf"
 CGI_DIR="./tests/cgi-bin"
 SERVER_PID=""
@@ -35,7 +35,7 @@ if [ ! -x "$BIN" ]; then
 fi
 
 # Garante que nenhuma instância anterior esteja ocupando as portas 8080/8081
-pkill -f "build/webserv" 2>/dev/null || true
+pkill -x webserv 2>/dev/null || true
 sleep 0.2
 
 # ------------------------------------------------------------------------------

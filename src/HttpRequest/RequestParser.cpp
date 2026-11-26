@@ -8,7 +8,7 @@
 
 static const std::string CRLF = "\r\n";
 static const std::string HEADERS_END = "\r\n\r\n";
-static const char * const METHODS[] = {"GET", "POST", "DELETE"};
+static const char * const METHODS[] = {"GET", "POST", "DELETE", "HEAD"};
 
 static bool isValidHeaderValue( const std::string & s );
 static bool isValidHost( const std::string & s );

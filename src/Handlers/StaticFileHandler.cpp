@@ -73,9 +73,8 @@ static HttpResponse serveFile(const ServerConfig & config, const std::string & f
 
     HttpResponse response;
     response.setStatus(STATUS_OK);
-    response.setHeader("Content-Type", getMimeType(filePath));
-    
     response.setBody(content);
+    response.setHeader("Content-Type", getMimeType(filePath));
 
     return response;
 }
@@ -114,7 +113,7 @@ HttpResponse handleGet(const HttpRequest & request, const ServerConfig & config,
         if (loc.getAutoindex())
             return handleAutoindex(config, dirPath, requestPath);
 
-        return handleError(config, STATUS_FORBIDDEN);
+        return handleError(config, STATUS_NOT_FOUND);
     }
 
     if (access(filePath.c_str(), R_OK) != 0 || !S_ISREG(fileInfo.st_mode))

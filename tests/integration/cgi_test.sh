@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BIN="./build/webserv"
+BIN="./webserv"
 CGI_DIR="./tests/cgi-bin"
 CONF_1="/tmp/webserv_cgi_1.conf"
 CONF_2="/tmp/webserv_cgi_2.conf"
