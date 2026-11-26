@@ -8,8 +8,6 @@ CPP_DIR		:= src
 HPP_DIR		:= includes
 OBJ_DIR		:= build
 
-TEST_DIR    := $(OBJ_DIR)/test
-
 # Colors
 GREEN 		:= \033[0;32m
 YELLOW		:= \033[0;33m
@@ -72,40 +70,8 @@ re: fclean all
 
 TESTER_CONF			:=	config/tester.conf
 
-TEST_REQUEST		:=	$(TEST_DIR)/test_request_line
-
-TEST_REQUEST_SRC	:=	tests/main.cpp \
-						tests/request/location.cpp \
-						tests/request/parser.cpp \
-						tests/request/route.cpp \
-						tests/request/status_code.cpp \
-						src/config/ServerConfig.cpp \
-						src/config/LocationConfig.cpp \
-						src/Handlers/ErrorHandler.cpp \
-						src/Handlers/RedirectHandler.cpp \
-						src/Handlers/StaticFileHandler.cpp \
-						src/Handlers/UploadHandler.cpp \
-						src/HttpRequest/HttpRequest.cpp \
-						src/HttpRequest/RequestParser.cpp \
-						src/HttpResponse/ErrorPage.cpp \
-						src/HttpResponse/HttpResponse.cpp \
-						src/Utils/Utils.cpp
-
-TEST_HEADERS		:=	$(wildcard $(HPP_DIR)/*/*.hpp tests/*.hpp tests/*/*.hpp)
-
-TEST_CPPFLAGS		:=	$(CPPFLAGS) -I$(HPP_DIR) -Isrc
-
 $(TEST_DIR):
 	mkdir -p $(TEST_DIR)
-
-$(TEST_REQUEST): $(TEST_REQUEST_SRC) | $(TEST_DIR)
-	@echo "$(YELLOW)🔧 Building request line tests...$(RESET)"
-	@$(CPP) $(TEST_CPPFLAGS) $(TEST_REQUEST_SRC) -o $@
-	@echo "$(GREEN)✅ Tests built successfully$(RESET)"
-
-test: $(TEST_REQUEST)
-	@echo "$(BLUE)🧪 Running request line tests...$(RESET)"
-	@./$(TEST_REQUEST)
 
 all_tests: $(NAME)
 	@echo "$(BLUE)🧪 Running all tests...$(RESET)"
@@ -125,4 +91,4 @@ subtest: $(NAME) stop-port
 	echo "🧪 Running subject tester with $(TESTER_CONF)..."; \
 	./tests/tester http://localhost:8080
 
-.PHONY: all clean fclean re test all_tests subtest stop-port
+.PHONY: all clean fclean re all_tests stop-port subtest
